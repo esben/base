@@ -1,15 +1,10 @@
-inherit linux-kernel-base
+inherit linux-kernel-base kernel-arch
 
 DEPENDS += "${TARGET_ARCH}/toolchain"
 
-#virtual/${TARGET_PREFIX}depmod-${@get_kernelmajorversion('${PV}')} virtual/${TARGET_PREFIX}gcc${KERNEL_CCSUFFIX} 
-# we include gcc above, we dont need virtual/libc
-INHIBIT_DEFAULT_DEPS = "1"
 INHIBIT_PACKAGE_STRIP = "1"
 
 KERNEL_IMAGETYPE ?= "zImage"
-
-inherit kernel-arch
 
 export OS = "${TARGET_OS}"
 export CROSS_COMPILE = "${TARGET_PREFIX}"
@@ -29,9 +24,8 @@ KERNEL_CC = "${CCACHE}${HOST_PREFIX}gcc${KERNEL_CCSUFFIX} ${HOST_CC_KERNEL_ARCH}
 KERNEL_LD = "${LD}${KERNEL_LDSUFFIX} ${HOST_LD_KERNEL_ARCH}"
 
 # Where built kernel lies in the kernel tree
-KERNEL_OUTPUT ?= "arch/${ARCH}/boot/${KERNEL_IMAGETYPE}"
+KERNEL_OUTPUT ?= "arch/${KERNEL_ARCH}/boot/${KERNEL_IMAGETYPE}"
 KERNEL_IMAGEDEST = "boot"
-
 
 
 #
@@ -64,7 +58,7 @@ kernel_do_compile() {
 	fi
 }
 
-kernel_headers() {
+kernel_install_modules_dev() {
         install -d ${D}/kernel
         cp -fR scripts ${D}/kernel/
 
@@ -82,13 +76,13 @@ kernel_headers() {
 		cp -fR include/$ASMDIR/* ${D}/kernel/include/$ASMDIR/
 	fi
 	
-	# Kernel 2.6.27 moved headers from includes/asm-${ARCH} to arch/${ARCH}/include/asm
-	if [ -e arch/${ARCH}/include/asm/ ] ; then
+	# Kernel 2.6.27 moved headers from includes/asm-${KERNEL_ARCH} to arch/${KERNEL_ARCH}/include/asm
+	if [ -e arch/${KERNEL_ARCH}/include/asm/ ] ; then
 		if [ -e include/asm ] ; then
-			cp -fR arch/${ARCH}/include/asm/* ${D}/kernel/include/$ASMDIR/
+			cp -fR arch/${KERNEL_ARCH}/include/asm/* ${D}/kernel/include/$ASMDIR/
 		fi
-		install -d ${D}/kernel/arch/${ARCH}/include
-		cp -fR arch/${ARCH}/* ${D}/kernel/arch/${ARCH}/
+		install -d ${D}/kernel/arch/${KERNEL_ARCH}/include
+		cp -fR arch/${KERNEL_ARCH}/* ${D}/kernel/arch/${KERNEL_ARCH}/
 	
 	# Check for arch/x86 on i386
 	elif [ -d arch/x86/include/asm/ ]; then
@@ -137,10 +131,10 @@ kernel_headers() {
 	[ -e Rules.make ] && install -m 0644 Rules.make ${D}/kernel/
 	[ -e Makefile ] && install -m 0644 Makefile ${D}/kernel/
 	
-	# Check if arch/${ARCH}/Makefile exists and install it
-	if [ -e arch/${ARCH}/Makefile ]; then
-		install -d ${D}/kernel/arch/${ARCH}
-		install -m 0644 arch/${ARCH}/Makefile* ${D}/kernel/arch/${ARCH}
+	# Check if arch/${KERNEL_ARCH}/Makefile exists and install it
+	if [ -e arch/${KERNEL_ARCH}/Makefile ]; then
+		install -d ${D}/kernel/arch/${KERNEL_ARCH}
+		install -m 0644 arch/${KERNEL_ARCH}/Makefile* ${D}/kernel/arch/${KERNEL_ARCH}
 	# Otherwise check arch/x86/Makefile for i386 and x86_64 on kernels >= 2.6.24
 	elif [ -e arch/x86/Makefile ]; then
 		install -d ${D}/kernel/arch/x86
@@ -177,7 +171,8 @@ kernel_do_install() {
                 oe_runmake SUBDIRS="scripts/genksyms"
         fi
 
-        kernel_headers
+	kernel_install_headers
+	kernel_install_modules_dev
 }
 
 kernel_do_configure() {
@@ -218,9 +213,9 @@ ALLOW_EMPTY_kernel-image = "1"
 # with a fixed length or there is a limit in transferring the kernel to memory
 do_sizecheck() {
 	if [ ! -z "${KERNEL_IMAGE_MAXSIZE}" ]; then
-        	size=`ls -l arch/${ARCH}/boot/${KERNEL_IMAGETYPE} | awk '{ print $5}'`
+        	size=`ls -l arch/${KERNEL_ARCH}/boot/${KERNEL_IMAGETYPE} | awk '{ print $5}'`
         	if [ $size -ge ${KERNEL_IMAGE_MAXSIZE} ]; then
-                	rm arch/${ARCH}/boot/${KERNEL_IMAGETYPE}
+                	rm arch/${KERNEL_ARCH}/boot/${KERNEL_IMAGETYPE}
                 	die  "This kernel (size=$size > ${KERNEL_IMAGE_MAXSIZE}) is too big for your device. Please reduce the size of the kernel by making more of it modular."
         	fi
     	fi
@@ -234,21 +229,21 @@ INHIBIT_KERNEL_UIMAGE_OVERRIDE ?= "0"
 
 do_deploy() {
 	install -d ${IMAGE_DEPLOY_DIR}
-	install -m 0644 arch/${ARCH}/boot/${KERNEL_IMAGETYPE} ${IMAGE_DEPLOY_DIR}/${KERNEL_IMAGE_BASE_NAME}.bin
+	install -m 0644 arch/${KERNEL_ARCH}/boot/${KERNEL_IMAGETYPE} ${IMAGE_DEPLOY_DIR}/${KERNEL_IMAGE_BASE_NAME}.bin
 	package_stagefile_shell ${IMAGE_DEPLOY_DIR}/${KERNEL_IMAGE_BASE_NAME}.bin
 	if (grep -q -i -e '^CONFIG_MODULES=y$' .config); then
 		tar -cvzf ${IMAGE_DEPLOY_DIR}/modules-${KERNEL_VERSION}-${PR}-${MACHINE}.tgz -C ${D} lib
 	fi
 	if test "x${KERNEL_IMAGETYPE}" = "xuImage" -a "${INHIBIT_KERNEL_UIMAGE_OVERRIDE}" != "1"; then
-		if test -e arch/${ARCH}/boot/compressed/vmlinux ; then
-			${OBJCOPY} -O binary -R .note -R .comment -S arch/${ARCH}/boot/compressed/vmlinux linux.bin
-			uboot-mkimage -A ${ARCH} -O linux -T kernel -C none -a ${UBOOT_ENTRYPOINT} -e ${UBOOT_ENTRYPOINT} -n "${DISTRO_NAME}/${PV}/${MACHINE}" -d linux.bin ${IMAGE_DEPLOY_DIR}/uImage-${PV}-${PR}-${MACHINE}-${DATETIME}.bin
+		if test -e arch/${KERNEL_ARCH}/boot/compressed/vmlinux ; then
+			${OBJCOPY} -O binary -R .note -R .comment -S arch/${KERNEL_ARCH}/boot/compressed/vmlinux linux.bin
+			uboot-mkimage -A ${KERNEL_ARCH} -O linux -T kernel -C none -a ${UBOOT_ENTRYPOINT} -e ${UBOOT_ENTRYPOINT} -n "${DISTRO_NAME}/${PV}/${MACHINE}" -d linux.bin ${IMAGE_DEPLOY_DIR}/uImage-${PV}-${PR}-${MACHINE}-${DATETIME}.bin
 			rm -f linux.bin
 		else
 			${OBJCOPY} -O binary -R .note -R .comment -S vmlinux linux.bin
 			rm -f linux.bin.gz
 			gzip -9 linux.bin
-			uboot-mkimage -A ${ARCH} -O linux -T kernel -C gzip -a ${UBOOT_ENTRYPOINT} -e ${UBOOT_ENTRYPOINT} -n "${DISTRO_NAME}/${PV}/${MACHINE}" -d linux.bin.gz ${IMAGE_DEPLOY_DIR}/uImage-${PV}-${PR}-${MACHINE}-${DATETIME}.bin
+			uboot-mkimage -A ${KERNEL_ARCH} -O linux -T kernel -C gzip -a ${UBOOT_ENTRYPOINT} -e ${UBOOT_ENTRYPOINT} -n "${DISTRO_NAME}/${PV}/${MACHINE}" -d linux.bin.gz ${IMAGE_DEPLOY_DIR}/uImage-${PV}-${PR}-${MACHINE}-${DATETIME}.bin
 			rm -f linux.bin.gz
 		fi
 	package_stagefile_shell ${IMAGE_DEPLOY_DIR}/uImage-${PV}-${PR}-${MACHINE}-${DATETIME}.bin
