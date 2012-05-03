@@ -30,6 +30,8 @@ DEFAULT_USE_glib_threads = "1"
 EXTRA_OECONF += "${EXTRA_OECONF_THREADS}"
 EXTRA_OECONF_THREADS = "--disable-threads"
 EXTRA_OECONF_THREADS:USE_glib_threads = "--with-threads=posix"
+EXTRA_OECONF_THREADS:machine-TARGET_OS_mingw32 = "--with-threads=win32"
+
 DEPENDS += "${DEPENDS_THREADS}"
 DEPENDS_THREADS:USE_glib_threads = "libpthread"
 
