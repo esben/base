@@ -9,8 +9,9 @@ inherit c++ autotools-autoreconf library make-vpath
 require conf/fetch/gnu.conf
 SRC_URI = "${GNU_MIRROR}/gettext/gettext-${PV}.tar.gz"
 
-DEPENDS = "libiconv libdl libm libpthread ${DEPENDS_SELF_NATIVE}"
-DEPENDS:>machine-TARGET_OS_linux-gnu = " libncurses"
+DEPENDS = "libiconv ${DEPENDS_HOST_OS} ${DEPENDS_SELF_NATIVE}"
+DEPENDS_HOST_OS = "libdl libpthread libm libncurses"
+DEPENDS_HOST_OS:HOST_OS_mingw32 = "libm libncurses"
 DEPENDS_SELF_NATIVE = "native:gettext"
 DEPENDS_SELF_NATIVE:native = ""
 
@@ -35,8 +36,10 @@ EXTRA_OECONF += "\
 --without-emacs --without-git --without-cvs \
 --with-included-glib \
 "
-EXTRA_OECONF:>native = " --disable-curses --with-included-gettext"
-EXTRA_OECONF:>machine-TARGET_OS_mingw32 = " --with-included-gettext"
+EXTRA_OECONF += "${EXTRA_OECONF_GETTEXT}"
+EXTRA_OECONF_GETTEXT = ""
+EXTRA_OECONF_GETTEXT:native = "--disable-curses --with-included-gettext"
+EXTRA_OECONF_GETTEXT:HOST_OS_mingw32 = "--with-included-gettext"
 
 DEPENDS_${PN} = "libintl libgettextpo libgettextlib \
     libiconv libncurses libdl libm"
