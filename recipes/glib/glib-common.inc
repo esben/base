@@ -6,12 +6,12 @@ DESCRIPTION = "GLib is a general-purpose utility library, which provides many \
 
 inherit c++ autotools
 
-DEPENDS = "host-cross:gtk-doc libz libpthread libdl libresolv \
-	libffi ${DEPENDS_NATIVE} ${DEPENDS_GETTEXT}"
+DEPENDS = "host-cross:gtk-doc libz libffi ${DEPENDS_NATIVE} ${DEPENDS_HOST_OS}"
 DEPENDS_NATIVE = "native:libglib native:libgmodule native:glib-utils"
 DEPENDS_NATIVE:native = ""
-DEPENDS_GETTEXT:machine-TARGET_OS_mingw32 = "libintl"
-DEPENDS_GETTEXT:native = ""
+DEPENDS_HOST_OS = "libdl libpthread libresolv"
+DEPENDS_HOST_OS:HOST_OS_mingw32 = "libintl"
+DEPENDS_HOST_OS:native = ""
 
 require conf/fetch/gnome.conf
 SRC_URI_SUBDIR = "${@'.'.join(d.getVar('PV', True).split('.')[:2])}"
@@ -52,7 +52,7 @@ DEPENDS_FAM = ""
 DEPENDS_PCRE = ""
 
 DEPENDS_${PN} += "libffi"
-DEPENDS_${PN}-libglib += "libc libgcc ${DEPENDS_PCRE} ${DEPENDS_GETTEXT}"
+DEPENDS_${PN}-libglib += "libc libgcc ${DEPENDS_PCRE} ${DEPENDS_HOST_OS}"
 DEPENDS_${PN}-libgthread += "libc libglib ${DEPENDS_THREADS} ${DEPENDS_PCRE}"
 DEPENDS_${PN}-libgobject += "libc libffi libglib libgthread ${DEPENDS_THREADS} ${DEPENDS_PCRE}"
 DEPENDS_${PN}-libgmodule += "libc libdl libglib ${DEPENDS_PCRE}"
