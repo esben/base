@@ -1,0 +1,7 @@
+require ${PN}.inc
+
+SRC_URI += "file://extmk_run.patch"
+SRC_URI += "file://extmk.patch"
+SRC_URI += "file://0001-socket-extconf-hardcode-wide-getaddr-info-test-outco.patch"
+
+FILES_${PN}-dbg += "${libdir}/ruby/1.8/*/.debug ${libdir}/ruby/1.8/*/*/.debug"
