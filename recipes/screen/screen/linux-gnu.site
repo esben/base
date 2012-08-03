@@ -1,0 +1,9 @@
+screen_cv_sys_fifo_usable=yes
+screen_cv_sys_fifo_broken_impl=no
+screen_cv_sys_sockets_usable=yes
+screen_cv_sys_sockets_nofs=no
+screen_cv_sys_select_broken_retval=no
+screen_cv_sys_terminfo_used=yes
+screen_cv_sys_bcopy_overlap=yes
+screen_cv_sys_memmove_overlap=yes
+screen_cv_sys_memcpy_overlap=yes

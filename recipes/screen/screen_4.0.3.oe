@@ -1,0 +1,9 @@
+require ${PN}.inc
+
+SRC_URI += "file://configure.patch"
+SRC_URI += "file://cross-compile.patch"
+SRC_URI += "file://no-stropts.patch"
+SRC_URI += "file://no-utempter.patch"
+SRC_URI += "file://sched.patch"
+
+PARALLEL_MAKE = ""
