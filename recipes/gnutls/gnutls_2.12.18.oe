@@ -1,0 +1,30 @@
+require ${PN}.inc
+
+SRC_URI += "file://gnutls-openssl.patch"
+SRC_URI += "file://correct_rpl_gettimeofday_signature.patch"
+SRC_URI += "file://configure-fix.patch"
+
+PARALLEL_MAKE = ""
+# Avoid do_compile failures like:
+#
+# make[6]: Entering directory `/data/oe-lite/master/tmp/work/machine/arm-926ejs-linux-gnueabi/gnutls-2.12.18/src/gnutls-2.12.18/lib/gl'
+#   CC     c-ctype.lo
+#   CC     fd-hook.lo
+#   CC     read-file.lo
+#   CC     sockets.lo
+#   CC     asnprintf.lo
+#   CC     memchr.lo
+# mv: cannot stat `.deps/c-ctype.Tpo': No such file or directory
+# make[6]: *** [c-ctype.lo] Error 1
+# make[6]: *** Waiting for unfinished jobs....
+# mv: cannot stat `.deps/asnprintf.Tpo': No such file or directory
+# make[6]: *** [asnprintf.lo] Error 1
+# mv: cannot stat `.deps/fd-hook.Tpo': No such file or directory
+# make[6]: *** [fd-hook.lo] Error 1
+# mv: cannot stat `.deps/read-file.Tpo': No such file or directory
+# make[6]: *** [read-file.lo] Error 1
+# mv: cannot stat `.deps/sockets.Tpo': No such file or directory
+# make[6]: *** [sockets.lo] Error 1
+# mv: cannot stat `.deps/memchr.Tpo': No such file or directory
+# make[6]: *** [memchr.lo] Error 1
+#

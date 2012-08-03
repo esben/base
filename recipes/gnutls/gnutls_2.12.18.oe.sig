@@ -1,0 +1,1 @@
+cd5cf0932575b758ad3ee89952763a8395ea4af0  gnutls-2.12.18.tar.bz2
