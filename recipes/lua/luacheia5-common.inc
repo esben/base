@@ -13,6 +13,7 @@ SRC_URI = "${SOURCEFORGE_MIRROR}/luacheia/luacheia5-${PV}.tar.gz"
 S = "${SRCDIR}/luacheia5-${PV}"
 
 SRC_URI += "file://autotoolsfixup.patch"
+SRC_URI += "file://sdl-config-not-found.patch"
 
 do_patch[postfuncs] += "do_patch_pkgdata_fixup"
 do_patch_pkgdata_fixup() {
