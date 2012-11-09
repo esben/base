@@ -1,0 +1,496 @@
+https://bugs.kde.org/attachment.cgi?id=64147
+
+patch for armv5
+
+I have gotten valgrind(memcheck) to run on armv5te.  There is lots of testing
+ahead.  So far what works is "valgrind /bin/date".
+Work was done natively on a sheevaplug (1200 BogoMIPS, 512MB RAM) running
+Debian testing (wheezy).
+
+Starting from JW's patch, I recoded the dispatch inner loop for speed, avoided
+instructions not present on armv5te (movt, movw, ldd, floating point), and
+found a way to handle Thread Local Storage (tls).
+I believe that the code might run on armv4 if the few 'bx' instructions were
+re-written as "mov pc,rx", but I have no way to test that these are the only
+changes needed.
+I also helped find and fix mis-aligned fetches in the readelf.c and
+readdwarf.c (already committed to SVN by Tom Hughes.)
+
+My environment:
+----- /proc/cpuinfo
+Processor       : Feroceon 88FR131 rev 1 (v5l)
+BogoMIPS        : 1192.75
+Features        : swp half thumb fastmult edsp
+CPU implementer : 0x56  
+CPU architecture: 5TE
+CPU variant     : 0x2
+CPU part        : 0x131
+CPU revision    : 1
+
+Hardware        : Marvell SheevaPlug Reference Board
+-----
+512MB RAM
+-----
+Debian testing (wheezy)
+Linux sheevaplug 2.6.32-5-kirkwood #1 Wed Jan 12 15:27:07 UTC 2011 armv5tel GNU/Linux
+gcc (Debian 4.6.1-4) 4.6.1
+libc6  2.13-21
+-----
+
+Index: Makefile.all.am
+===================================================================
+--- Makefile.all.am	(revision 12084)
++++ Makefile.all.am	(working copy)
+@@ -160,9 +160,9 @@
+ 
+ AM_FLAG_M3264_ARM_LINUX   = @FLAG_M32@
+ AM_CFLAGS_ARM_LINUX       = @FLAG_M32@ @PREFERRED_STACK_BOUNDARY@ \
+-			 	$(AM_CFLAGS_BASE) -marm -mcpu=cortex-a8
++			 	$(AM_CFLAGS_BASE) $(VGCONF_PLATFORM_ARM_ARCH)
+ AM_CCASFLAGS_ARM_LINUX    = $(AM_CPPFLAGS_ARM_LINUX) @FLAG_M32@ \
+-				-marm -mcpu=cortex-a8 -g
++				$(VGCONF_PLATFORM_ARM_ARCH) -g
+ 
+ AM_FLAG_M3264_X86_DARWIN = -arch i386
+ AM_CFLAGS_X86_DARWIN     = $(WERROR) -arch i386 $(AM_CFLAGS_BASE) \
+Index: configure.in
+===================================================================
+--- configure.in	(revision 12084)
++++ configure.in	(working copy)
+@@ -140,6 +140,8 @@
+ # configure-time, and distinguishes them from the VGA_*/VGO_*/VGP_*
+ # variables used when compiling C files.
+ 
++VGCONF_PLATFORM_ARM_ARCH=
++
+ AC_CANONICAL_HOST
+ 
+ AC_MSG_CHECKING([for a supported CPU])
+@@ -176,15 +178,34 @@
+         ;;
+ 
+      armv7*)
+-	AC_MSG_RESULT([ok (${host_cpu})])
+-	ARCH_MAX="arm"
+-	;;
++       # This means we use a armv7 toolchain - at least Cortex-A8
++       AC_MSG_RESULT([ok (${host_cpu})])
++       ARCH_MAX="arm"
++       VGCONF_PLATFORM_ARM_ARCH="-march=armv7 -mcpu=cortex-a8"
++       AC_DEFINE(ARM_ARCH_V7,1,"Defined for v7 architectures")
++	   ;;
+ 
++     armv6*)
++       AC_MSG_RESULT([ok (${host_cpu})])
++       ARCH_MAX="arm"
++       VGCONF_PLATFORM_ARM_ARCH="-march=armv6"
++       AC_DEFINE(ARM_ARCH_V6,1,"Defined for v6 architectures")
++	   ;;
++
++     arm*)
++       # Generic arm toolchain - we will target armv5te
++       AC_MSG_RESULT([(${host_cpu}) - will enforce armv5te when compiling])
++       ARCH_MAX="arm"
++       VGCONF_PLATFORM_ARM_ARCH="-march=armv5te"
++       AC_DEFINE(ARM_ARCH_V5TE,1,"Defined for v5te architectures")
++      ;;
++
+      *) 
+ 	AC_MSG_RESULT([no (${host_cpu})])
+ 	AC_MSG_ERROR([Unsupported host architecture. Sorry])
+ 	;;
+ esac
++AC_SUBST(VGCONF_PLATFORM_ARM_ARCH)
+ 
+ #----------------------------------------------------------------------------
+ 
+Index: Makefile.am
+===================================================================
+--- Makefile.am	(revision 12084)
++++ Makefile.am	(working copy)
+@@ -3,18 +3,19 @@
+ 
+ include $(top_srcdir)/Makefile.all.am 
+ 
+-TOOLS =		memcheck \
+-		cachegrind \
+-		callgrind \
+-		massif \
+-		lackey \
+-		none \
+-		helgrind \
+-		drd
++TOOLS =		memcheck
++# jfr		cachegrind \
++# jfr		callgrind \
++# jfr		massif \
++# jfr		lackey \
++# jfr		none \
++# jfr		helgrind \
++# jfr		drd
+ 
+-EXP_TOOLS = 	exp-sgcheck \
+-		exp-bbv \
+-		exp-dhat
++EXP_TOOLS =
++# jfr	 	exp-sgcheck \
++# jfr		exp-bbv \
++# jfr		exp-dhat
+ 
+ # DDD: once all tools work on Darwin, TEST_TOOLS and TEST_EXP_TOOLS can be
+ # replaced with TOOLS and EXP_TOOLS.
+@@ -38,9 +39,9 @@
+ 	tests \
+ 	perf \
+ 	gdbserver_tests \
+-	auxprogs \
+-	mpi \
+-	docs
++	auxprogs
++# jfr	mpi \
++# jfr	docs
+ DIST_SUBDIRS  = $(SUBDIRS)
+ 
+ SUPP_FILES = \
+Index: coregrind/m_dispatch/dispatch-arm-linux.S
+===================================================================
+--- coregrind/m_dispatch/dispatch-arm-linux.S	(revision 12084)
++++ coregrind/m_dispatch/dispatch-arm-linux.S	(working copy)
+@@ -9,6 +9,9 @@
+ 
+   Copyright (C) 2008-2010 Evan Geller
+      gaze@bea.ms
++  Copyright (C) 2011 John Reiser
++     jreiser@BitWagon.com
++     Sept+Oct 2011:  Inner loops recoded.  Set kernel tls pointer from user's.
+ 
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License as
+@@ -37,6 +40,22 @@
+ #include "libvex_guest_offsets.h"	/* for OFFSET_arm_R* */
+ 
+ 
++.text
++// Kernel puts a user-executable subroutine at 0xffff0fe0 to return the value
++// of the Thread Local Storage (tls) pointer.
++__aeabi_read_tp: .globl __aeabi_read_tp  // Code copied from glibc-2.13.
++	mvn r0,#0xf000  // 0xffff0fff
++	sub pc,r0,#31  // goto 0xffff0fe0: __kuser_get_tls
++
++// System call to change the tls pointer that is returned by (*0xffff0fe0)().
++real_sys_set_tls: .globl real_sys_set_tls
++	mov ip,r7
++	mov r7,#0xf0000
++	orr r7,r7,#5  // 983045
++	svc 0
++	mov r7,ip
++	bx lr
++
+ /*------------------------------------------------------------*/
+ /*---                                                      ---*/
+ /*--- The dispatch loop.  VG_(run_innerloop) is used to    ---*/
+@@ -55,142 +74,144 @@
+ .globl VG_(run_innerloop)
+ VG_(run_innerloop):
+ 	push {r0, r1, r4, r5, r6, r7, r8, r9, fp, lr}
++        /* r0 (hence also [sp,#0]) holds guest_state */
++        /* r1 holds do_profiling */
++	mov r8, r0
++	mov r9, r1
+ 
++#if defined(ARM_ARCH_V6) || defined(ARM_ARCH_V7)  /*{*/
+         /* set FPSCR to vex-required default value */
+         mov  r4, #0
+         fmxr fpscr, r4
++#endif  /*}*/
+ 
+-        /* r0 (hence also [sp,#0]) holds guest_state */
+-        /* r1 holds do_profiling */
+-	mov r8, r0
++	// Propagate user tls pointer to kernel.
++	bl __aeabi_read_tp
++	mov r1,r0              // kernel's idea of tls pointer
++	ldr r0, [r8, #OFFSET_arm_TPIDRURO]  // our assumed tls pointer
++	cmp r0, r1; beq 0f
++	bl real_sys_set_tls    // update kernel's cache
++0:
++
+ 	ldr r0, [r8, #OFFSET_arm_R15T]
+-        
+        	/* fall into main loop (the right one) */
+-	cmp r1, #0      /* do_profiling */
+-	beq VG_(run_innerloop__dispatch_unprofiled)
+-	b   VG_(run_innerloop__dispatch_profiled)
++	cmp r9, #0      /* do_profiling */
++	bne VG_(run_innerloop__dispatch_profiled)
++	// FALLTHRUOGH  b VG_(run_innerloop__dispatch_unprofiled)
+ 
+ 
+ /*----------------------------------------------------*/
+ /*--- NO-PROFILING (standard) dispatcher           ---*/
+ /*----------------------------------------------------*/
+ 
+-/* Pairing of insns below is my guesstimate of how dual dispatch would
+-   work on an A8.  JRS, 2011-May-28 */
++// Pairing of insns below is how dual dispatch should work.
+  
++CLR_HI= 32 - VG_TT_FAST_BITS -1  // hash omits low bit
++CLR_LO= 32 - VG_TT_FAST_BITS     // hash omits low bit
++
+ .global	VG_(run_innerloop__dispatch_unprofiled)
+ VG_(run_innerloop__dispatch_unprofiled):
+-
+ 	/* AT ENTRY: r0 is next guest addr, r8 is possibly
+         modified guest state ptr */
+ 
+-        /* Has the guest state pointer been messed with?  If yes, exit. */
+-        movw r3, #:lower16:VG_(dispatch_ctr)
++	ldr  r2,=VG_(dispatch_ctr)
+         tst  r8, #1
+ 
+-        movt r3, #:upper16:VG_(dispatch_ctr)
++	ldr  r5,=VG_(tt_fast)
++	bne  gsp_changed                // guest state pointer was modified
+ 
+-	bne  gsp_changed
++        ldr  r1, [r2]                   // dispatch_ctr
++	mov  r3, r0, LSL #CLR_HI        // shift off hi bits
+ 
+-	/* save the jump address in the guest state */
+-        str  r0, [r8, #OFFSET_arm_R15T]
++        str  r0, [r8, #OFFSET_arm_R15T]  // save jump address into guest state
++	add  r5, r5, r3, LSR #CLR_LO -3 // r5= &tt_fast[entry#]
+ 
+-        /* Are we out of timeslice?  If yes, defer to scheduler. */
+-        ldr  r2, [r3]
++	ldr  r4, [r5, #0]               // r4= .guest
++        subs r1, r1, #1                 // decrement timeslice
+ 
+-        subs r2, r2, #1
++	ldr  r5, [r5, #4]               // r5= .host
++        beq  counter_is_zero            // out of timeslice ==> defer to scheduler
+ 
+-        str  r2, [r3]
++	adr  lr, VG_(run_innerloop__dispatch_unprofiled)  // &continuation
++	cmp  r4, r0                     // check cache tag
+ 
+-        beq  counter_is_zero
+-
+-        /* try a fast lookup in the translation cache */
+-        // r0 = next guest, r1,r2,r3,r4 scratch
+-        movw r1, #VG_TT_FAST_MASK       // r1 = VG_TT_FAST_MASK
+-        movw r4, #:lower16:VG_(tt_fast)
+-
+-	and  r2, r1, r0, LSR #1         // r2 = entry #
+-        movt r4, #:upper16:VG_(tt_fast) // r4 = &VG_(tt_fast)
+-
+-	add  r1, r4, r2, LSL #3         // r1 = &tt_fast[entry#]
+-
+-        ldrd r4, r5, [r1, #0]           // r4 = .guest, r5 = .host
+-
+-	cmp  r4, r0
+-
+-	bne  fast_lookup_failed
++        streq  r1, [r2]                 // match: update dispatch_ctr
++	bxeq r5                         // match: jump to .host, continue at *lr
+         // r5: next-host    r8: live, gsp
+         // r4: next-guest
+-        // r2: entry #
++        // r2: &VG_(dispatch_ctr)
++	// r1:  VG_(dispatch_ctr)
+         // LIVE: r5, r8; all others dead
+-        
+-        /* Found a match.  Jump to .host. */
+-	blx  r5
+-	b    VG_(run_innerloop__dispatch_unprofiled)
+-.ltorg
++fast_lookup_failed:
++	movne  r0, #VG_TRC_INNER_FASTMISS
++counter_is_zero:
++        moveq  r0, #VG_TRC_INNER_COUNTERZERO
++
++/* All exits from the dispatcher go through here.  %r0 holds
++   the return value. 
++*/
++run_innerloop_exit:
++#if defined(ARM_ARCH_V6) || defined(ARM_ARCH_V7)  /*{*/
++        /* We're leaving.  Check that nobody messed with
++           FPSCR in ways we don't expect. */
++        fmrx r4, fpscr
++        bic  r4, #0xF8000000 /* mask out NZCV and QC */
++        bic  r4, #0x0000009F /* mask out IDC,IXC,UFC,OFC,DZC,IOC */
++        cmp  r4, #0
++	cmp  r4, r4  // nofp
++invariant_violation:
++        movne  r0, #VG_TRC_INVARIANT_FAILED
++#endif  /*}*/
++
++run_innerloop_exit_REALLY:
++	add sp, sp, #8
++	pop {r4, r5, r6, r7, r8, r9, fp, pc}
+ 	/*NOTREACHED*/
+ 
++.ltorg
++
+ /*----------------------------------------------------*/
+ /*--- PROFILING dispatcher (can be much slower)    ---*/
+ /*----------------------------------------------------*/
+ 
+ .global	VG_(run_innerloop__dispatch_profiled)
+ VG_(run_innerloop__dispatch_profiled):
+-
+ 	/* AT ENTRY: r0 is next guest addr, r8 is possibly
+         modified guest state ptr */
+ 
+-        /* Has the guest state pointer been messed with?  If yes, exit. */
+-        movw r3, #:lower16:VG_(dispatch_ctr)
+-	tst  r8, #1
++	ldr  r2,=VG_(dispatch_ctr)
++        tst  r8, #1
+ 
+-        movt r3, #:upper16:VG_(dispatch_ctr)
++	ldr  r5,=VG_(tt_fast)
++	bne  gsp_changed                // guest state pointer was modified
+ 
+-	bne  gsp_changed
++        ldr  r1, [r2]                   // dispatch_ctr
++	mov  r3, r0, LSL #CLR_HI        // shift off hi bits
+ 
+-	/* save the jump address in the guest state */
+-        str  r0, [r8, #OFFSET_arm_R15T]
++        str  r0, [r8, #OFFSET_arm_R15T]  // save jump address into guest state
++	add  r5, r5, r3, LSR #CLR_LO -3 // r5= &tt_fast[entry#]
+ 
+-        /* Are we out of timeslice?  If yes, defer to scheduler. */
+-        ldr  r2, [r3]
++	ldr  r4, [r5, #0]               // r4= .guest
++        subs r1, r1, #1                 // decrement timeslice
+ 
+-        subs r2, r2, #1
++	ldr  r5, [r5, #4]               // r5= .host
++        beq  counter_is_zero            // out of timeslice ==> defer to scheduler
+ 
+-        str  r2, [r3]
++	cmp  r4, r0                     // check cache tag
++	ldr  r0, =VG_(tt_fastN)
+ 
+-        beq  counter_is_zero
++        streq  r1, [r2]                 // match: update dispatch_ctr
++	bne fast_lookup_failed
+ 
+-        /* try a fast lookup in the translation cache */
+-        // r0 = next guest, r1,r2,r3,r4 scratch
+-        movw r1, #VG_TT_FAST_MASK       // r1 = VG_TT_FAST_MASK
+-        movw r4, #:lower16:VG_(tt_fast)
++	ldr  r0, [r0, r3, LSR #CLR_LO -2]  // tt_fastN[entry#]
++	adr  lr, VG_(run_innerloop__dispatch_profiled)  // &continuation
++// r0 stall
++	ldr  r3, [r0]
++// r3 stall
++	add  r3, r3, #1
+ 
+-	and  r2, r1, r0, LSR #1         // r2 = entry #
+-        movt r4, #:upper16:VG_(tt_fast) // r4 = &VG_(tt_fast)
+-
+-	add  r1, r4, r2, LSL #3         // r1 = &tt_fast[entry#]
+-
+-        ldrd r4, r5, [r1, #0]           // r4 = .guest, r5 = .host
+-
+-	cmp  r4, r0
+-
+-	bne  fast_lookup_failed
+-        // r5: next-host    r8: live, gsp
+-        // r4: next-guest
+-        // r2: entry #
+-        // LIVE: r5, r8; all others dead
+-        
+-        /* increment bb profile counter */
+-        movw r0, #:lower16:VG_(tt_fastN)
+-        movt r0, #:upper16:VG_(tt_fastN) // r0 = &tt_fastN[0]
+-        ldr  r0, [r0, r2, LSL #2]        // r0 = tt_fast[entry #]
+-        ldr  r3, [r0]                    // *r0 ++
+-        add  r3, r3, #1
+-        str  r3, [r0]
+-
+-        /* Found a match.  Jump to .host. */
+-	blx  r5
+-	b    VG_(run_innerloop__dispatch_profiled)
++	str  r3, [r0]
++	bx  r5                         // match: jump to .host, continue at *lr
+ 	/*NOTREACHED*/
+ 
+ /*----------------------------------------------------*/
+@@ -212,49 +233,6 @@
+ 	b run_innerloop_exit
+         /*NOTREACHED*/
+ 
+-counter_is_zero:
+-        /* R15T is up to date here */
+-        /* Back out increment of the dispatch ctr */
+-        ldr  r1, =VG_(dispatch_ctr)
+-        ldr  r2, [r1]
+-        add  r2, r2, #1
+-        str  r2, [r1]
+-        mov  r0, #VG_TRC_INNER_COUNTERZERO
+-        b    run_innerloop_exit
+-        /*NOTREACHED*/
+-        
+-fast_lookup_failed:
+-        /* R15T is up to date here */
+-        /* Back out increment of the dispatch ctr */
+-        ldr  r1, =VG_(dispatch_ctr)
+-        ldr  r2, [r1]
+-        add  r2, r2, #1
+-        str  r2, [r1]
+-	mov  r0, #VG_TRC_INNER_FASTMISS
+-	b    run_innerloop_exit
+-        /*NOTREACHED*/
+-
+-/* All exits from the dispatcher go through here.  %r0 holds
+-   the return value. 
+-*/
+-run_innerloop_exit:
+-        /* We're leaving.  Check that nobody messed with
+-           FPSCR in ways we don't expect. */
+-        fmrx r4, fpscr
+-        bic  r4, #0xF8000000 /* mask out NZCV and QC */
+-        bic  r4, #0x0000009F /* mask out IDC,IXC,UFC,OFC,DZC,IOC */
+-        cmp  r4, #0
+-        bne  invariant_violation
+-        b    run_innerloop_exit_REALLY
+-
+-invariant_violation:
+-        mov  r0, #VG_TRC_INVARIANT_FAILED
+-        b    run_innerloop_exit_REALLY
+-
+-run_innerloop_exit_REALLY:
+-	add sp, sp, #8
+-	pop {r4, r5, r6, r7, r8, r9, fp, pc}
+-
+ .size VG_(run_innerloop), .-VG_(run_innerloop)
+ 
+ 
+Index: coregrind/m_syswrap/syswrap-generic.c
+===================================================================
+--- coregrind/m_syswrap/syswrap-generic.c	(revision 12084)
++++ coregrind/m_syswrap/syswrap-generic.c	(working copy)
+@@ -2025,8 +2025,19 @@
+       mreq.rkind = MAny;
+    }
+ 
++   /* handle alignment to 4 pages we need for MAP_FIXED to succeed on ARM */
++   vg_assert(VKI_SHMLBA >= VKI_PAGE_SIZE);
++   if ( (arg4 & VKI_MAP_SHARED) && (arg1 == 0) && (VKI_SHMLBA > VKI_PAGE_SIZE) ) {
++      mreq.len += VKI_SHMLBA - VKI_PAGE_SIZE;
++   }
+    /* Enquire ... */
+    advised = VG_(am_get_advisory)( &mreq, True/*client*/, &mreq_ok );
++   if (mreq_ok && (arg4 & VKI_MAP_SHARED) && (arg1 == 0) && (VKI_SHMLBA > VKI_PAGE_SIZE) ) {
++       Addr newaddr = VG_ROUNDUP(advised, VKI_SHMLBA);
++       mreq.len -= (newaddr - advised);
++       advised   = newaddr;
++   }
++
+    if (!mreq_ok) {
+       /* Our request was bounced, so we'd better fail. */
+       return VG_(mk_SysRes_Error)( VKI_EINVAL );
