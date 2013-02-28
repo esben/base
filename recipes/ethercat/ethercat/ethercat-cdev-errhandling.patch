@@ -1,0 +1,597 @@
+diff -r c6e6ec6ba5d8 master/cdev.c
+--- a/master/cdev.c	Wed Sep 22 15:41:43 2010 +0200
++++ b/master/cdev.c	Mon Nov 01 14:01:07 2010 +0100
+@@ -1079,6 +1079,7 @@
+     unsigned int byte_size;
+     uint16_t *words;
+     ec_sii_write_request_t request;
++    int ret;
+ 
+     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+         return -EFAULT;
+@@ -1096,20 +1097,22 @@
+ 
+     if (copy_from_user(words,
+                 (void __user *) data.words, byte_size)) {
+-        kfree(words);
+-        return -EFAULT;
++        ret = -EFAULT;
++        goto out_kfree;
+     }
+ 
+-    if (down_interruptible(&master->master_sem))
+-        return -EINTR;
++    if (down_interruptible(&master->master_sem)) {
++        ret = -EINTR;
++        goto out_kfree;
++    }
+ 
+     if (!(slave = ec_master_find_slave(
+                     master, 0, data.slave_position))) {
+         up(&master->master_sem);
+         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
+                 data.slave_position);
+-        kfree(words);
+-        return -EINVAL;
++        ret = -EINVAL;
++        goto out_kfree;
+     }
+ 
+     // init SII write request
+@@ -1134,8 +1137,8 @@
+             // abort request
+             list_del(&request.list);
+             up(&master->master_sem);
+-            kfree(words);
+-            return -EINTR;
++            ret = -EINTR;
++            goto out_kfree;
+         }
+         up(&master->master_sem);
+     }
+@@ -1143,9 +1146,11 @@
+     // wait until master FSM has finished processing
+     wait_event(master->sii_queue, request.state != EC_INT_REQUEST_BUSY);
+ 
++    ret = request.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
++
++out_kfree:
+     kfree(words);
+-
+-    return request.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
++    return ret;
+ }
+ 
+ /*****************************************************************************/
+@@ -1161,6 +1166,7 @@
+     ec_slave_t *slave;
+     uint8_t *contents;
+     ec_reg_request_t request;
++    int ret;
+ 
+     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+         return -EFAULT;
+@@ -1175,15 +1181,19 @@
+         return -ENOMEM;
+     }
+ 
+-    if (down_interruptible(&master->master_sem))
+-        return -EINTR;
++    if (down_interruptible(&master->master_sem)) {
++        EC_MASTER_WARN(master, "interrupted by signal\n");
++        ret = -EINTR;
++        goto out_kfree;
++    }
+ 
+     if (!(slave = ec_master_find_slave(
+                     master, 0, data.slave_position))) {
+         up(&master->master_sem);
+         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
+                 data.slave_position);
+-        return -EINVAL;
++        ret = -EINVAL;
++        goto out_kfree;
+     }
+ 
+     // init register request
+@@ -1209,8 +1219,8 @@
+             // abort request
+             list_del(&request.list);
+             up(&master->master_sem);
+-            kfree(contents);
+-            return -EINTR;
++            ret = -EINTR;
++            goto out_kfree;
+         }
+         up(&master->master_sem);
+     }
+@@ -1219,13 +1229,18 @@
+     wait_event(master->reg_queue, request.state != EC_INT_REQUEST_BUSY);
+ 
+     if (request.state == EC_INT_REQUEST_SUCCESS) {
+-        if (copy_to_user((void __user *) data.data, contents, data.length))
+-            return -EFAULT;
++	if (copy_to_user((void __user *) data.data, contents, data.length)) {
++	    ret = -EFAULT;
++	    goto out_kfree;
++	}
+     }
++
++    ret = request.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
++
++out_kfree:
+     kfree(contents);
+-
+-    return request.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
+-}
++    return ret;
++}    
+ 
+ /*****************************************************************************/
+ 
+@@ -1240,6 +1255,7 @@
+     ec_slave_t *slave;
+     uint8_t *contents;
+     ec_reg_request_t request;
++    int ret;
+ 
+     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+         return -EFAULT;
+@@ -1255,20 +1271,22 @@
+     }
+ 
+     if (copy_from_user(contents, (void __user *) data.data, data.length)) {
+-        kfree(contents);
+-        return -EFAULT;
++        ret = -EFAULT;
++        goto out_kfree;
+     }
+ 
+-    if (down_interruptible(&master->master_sem))
+-        return -EINTR;
++    if (down_interruptible(&master->master_sem)) {
++        ret = -EINTR;
++        goto out_kfree;
++    }
+ 
+     if (!(slave = ec_master_find_slave(
+                     master, 0, data.slave_position))) {
+         up(&master->master_sem);
+         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
+                 data.slave_position);
+-        kfree(contents);
+-        return -EINVAL;
++        ret = -EINVAL;
++        goto out_kfree;
+     }
+ 
+     // init register request
+@@ -1294,8 +1312,8 @@
+             // abort request
+             list_del(&request.list);
+             up(&master->master_sem);
+-            kfree(contents);
+-            return -EINTR;
++            ret = -EINTR;
++            goto out_kfree;
+         }
+         up(&master->master_sem);
+     }
+@@ -1303,9 +1321,11 @@
+     // wait until master FSM has finished processing
+     wait_event(master->reg_queue, request.state != EC_INT_REQUEST_BUSY);
+ 
++    ret = request.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
++
++out_kfree:
+     kfree(contents);
+-
+-    return request.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
++    return ret;
+ }
+ 
+ /*****************************************************************************/
+@@ -1642,9 +1662,8 @@
+     if (unlikely(!priv->requested))
+         return -EPERM;
+ 
+-    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
++    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+         return -EFAULT;
+-    }
+ 
+     sc = ecrt_master_slave_config_err(master, data.alias, data.position,
+             data.vendor_id, data.product_code);
+@@ -1849,9 +1868,8 @@
+     if (unlikely(!priv->requested))
+         return -EPERM;
+ 
+-    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
++    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+         return -EFAULT;
+-    }
+ 
+     ecrt_master_application_time(master, data.app_time);
+     return 0;
+@@ -2049,8 +2067,9 @@
+     if (unlikely(!priv->requested))
+         return -EPERM;
+ 
+-    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
++    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+         return -EFAULT;
++    }
+ 
+     if (down_interruptible(&master->master_sem))
+         return -EINTR;
+@@ -2081,8 +2100,9 @@
+     if (unlikely(!priv->requested))
+         return -EPERM;
+ 
+-    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
++    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+         return -EFAULT;
++    }
+ 
+     if (down_interruptible(&master->master_sem))
+         return -EINTR;
+@@ -2114,8 +2134,9 @@
+     if (unlikely(!priv->requested))
+         return -EPERM;
+ 
+-    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
++    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+         return -EFAULT;
++    }
+ 
+     if (down_interruptible(&master->master_sem))
+         return -EINTR;
+@@ -2147,8 +2168,9 @@
+     if (unlikely(!priv->requested))
+         return -EPERM;
+ 
+-    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
++    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+         return -EFAULT;
++    }
+ 
+     if (down_interruptible(&master->master_sem))
+         return -EINTR;
+@@ -2182,8 +2204,9 @@
+     if (unlikely(!priv->requested))
+         return -EPERM;
+ 
+-    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
++    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+         return -EFAULT;
++    }
+ 
+     if (down_interruptible(&master->master_sem))
+         return -EINTR;
+@@ -2225,8 +2248,9 @@
+     if (unlikely(!priv->requested))
+         return -EPERM;
+ 
+-    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
++    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+         return -EFAULT;
++    }
+ 
+     if (down_interruptible(&master->master_sem))
+         return -EINTR;
+@@ -2265,8 +2289,9 @@
+     if (unlikely(!priv->requested))
+         return -EPERM;
+ 
+-    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
++    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+         return -EFAULT;
++    }
+ 
+     if (!data.size)
+         return -EINVAL;
+@@ -2276,19 +2301,19 @@
+     }
+ 
+     if (copy_from_user(sdo_data, (void __user *) data.data, data.size)) {
+-        kfree(sdo_data);
+-        return -EFAULT;
++        ret = -EFAULT;
++        goto out_kfree;
+     }
+ 
+     if (down_interruptible(&master->master_sem)) {
+-        kfree(sdo_data);
+-        return -EINTR;
++        ret = -EINTR;
++        goto out_kfree;
+     }
+ 
+     if (!(sc = ec_master_get_config(master, data.config_index))) {
+         up(&master->master_sem);
+-        kfree(sdo_data);
+-        return -ENOENT;
++        ret = -ENOENT;
++        goto out_kfree;
+     }
+ 
+     up(&master->master_sem); // FIXME
+@@ -2300,6 +2325,8 @@
+         ret = ecrt_slave_config_sdo(sc, data.index, data.subindex, sdo_data,
+                 data.size);
+     }
++
++out_kfree:
+     kfree(sdo_data);
+     return ret;
+ }
+@@ -2469,25 +2496,27 @@
+     }
+ 
+     if (copy_from_user(data, (void __user *) ioctl.data, ioctl.size)) {
+-        kfree(data);
+-        return -EFAULT;
++        ret = -EFAULT;
++        goto out_kfree;
+     }
+ 
+     if (down_interruptible(&master->master_sem)) {
+-        kfree(data);
+-        return -EINTR;
++        ret = -EINTR;
++        goto out_kfree;
+     }
+ 
+     if (!(sc = ec_master_get_config(master, ioctl.config_index))) {
+         up(&master->master_sem);
+-        kfree(data);
+-        return -ENOENT;
++        ret = -ENOENT;
++        goto out_kfree;
+     }
+ 
+     up(&master->master_sem); // FIXME
+ 
+     ret = ecrt_slave_config_idn(
+             sc, ioctl.drive_no, ioctl.idn, ioctl.al_state, data, ioctl.size);
++
++out_kfree:
+     kfree(data);
+     return ret;
+ }
+@@ -2508,9 +2537,8 @@
+     if (unlikely(!priv->requested))
+         return -EPERM;
+ 
+-    if (down_interruptible(&master->master_sem)) {
++    if (down_interruptible(&master->master_sem))
+         return -EINTR;
+-    }
+ 
+     list_for_each_entry(domain, &master->domains, list) {
+         if (domain->index == arg) {
+@@ -2636,8 +2664,9 @@
+     if (unlikely(!priv->requested))
+         return -EPERM;
+ 
+-    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
++    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+         return -EFAULT;
++    }
+ 
+     if (down_interruptible(&master->master_sem))
+         return -EINTR;
+@@ -2675,8 +2704,9 @@
+     if (unlikely(!priv->requested))
+         return -EPERM;
+ 
+-    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
++    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+         return -EFAULT;
++    }
+ 
+     if (down_interruptible(&master->master_sem))
+         return -EINTR;
+@@ -2722,8 +2752,9 @@
+     if (unlikely(!priv->requested))
+         return -EPERM;
+ 
+-    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
++    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+         return -EFAULT;
++    }
+ 
+     if (down_interruptible(&master->master_sem))
+         return -EINTR;
+@@ -2762,8 +2793,9 @@
+     if (unlikely(!priv->requested))
+         return -EPERM;
+ 
+-    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
++    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+         return -EFAULT;
++    }
+ 
+     if (!data.size) {
+         EC_MASTER_ERR(master, "SDO download: Data size may not be zero!\n");
+@@ -2814,8 +2846,9 @@
+     if (unlikely(!priv->requested))
+         return -EPERM;
+ 
+-    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
++    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+         return -EFAULT;
++    }
+ 
+     if (down_interruptible(&master->master_sem))
+         return -EINTR;
+@@ -2858,8 +2891,9 @@
+     if (unlikely(!priv->requested))
+         return -EPERM;
+ 
+-    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
++    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+         return -EFAULT;
++    }
+ 
+     if (get_user(vendor_id, data.vendor_id))
+         return -EFAULT;
+@@ -2905,8 +2939,9 @@
+     if (unlikely(!priv->requested))
+         return -EPERM;
+ 
+-    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
++    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+         return -EFAULT;
++    }
+ 
+     if (down_interruptible(&master->master_sem))
+         return -EINTR;
+@@ -2953,8 +2988,9 @@
+     if (unlikely(!priv->requested))
+         return -EPERM;
+ 
+-    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
++    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+         return -EFAULT;
++    }
+ 
+     if (down_interruptible(&master->master_sem))
+         return -EINTR;
+@@ -2992,8 +3028,9 @@
+     if (unlikely(!priv->requested))
+         return -EPERM;
+ 
+-    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
++    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+         return -EFAULT;
++    }
+ 
+     if (down_interruptible(&master->master_sem))
+         return -EINTR;
+@@ -3031,8 +3068,9 @@
+     if (unlikely(!priv->requested))
+         return -EPERM;
+ 
+-    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
++    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+         return -EFAULT;
++    }
+ 
+     if (down_interruptible(&master->master_sem))
+         return -EINTR;
+@@ -3079,8 +3117,9 @@
+     if (unlikely(!priv->requested))
+         return -EPERM;
+ 
+-    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
++    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+         return -EFAULT;
++    }
+ 
+     if (down_interruptible(&master->master_sem))
+         return -EINTR;
+@@ -3126,8 +3165,9 @@
+     if (unlikely(!priv->requested))
+         return -EPERM;
+ 
+-    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
++    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+         return -EFAULT;
++    }
+ 
+     if (down_interruptible(&master->master_sem))
+         return -EINTR;
+@@ -3345,9 +3385,8 @@
+     u8 *data;
+     int retval;
+ 
+-    if (copy_from_user(&ioctl, (void __user *) arg, sizeof(ioctl))) {
++    if (copy_from_user(&ioctl, (void __user *) arg, sizeof(ioctl)))
+         return -EFAULT;
+-    }
+ 
+     data = kmalloc(ioctl.mem_size, GFP_KERNEL);
+     if (!data) {
+@@ -3359,23 +3398,24 @@
+     retval = ecrt_master_read_idn(master, ioctl.slave_position,
+             ioctl.drive_no, ioctl.idn, data, ioctl.mem_size, &ioctl.data_size,
+             &ioctl.error_code);
+-    if (retval) {
+-        kfree(data);
+-        return retval;
+-    }
++    if (retval)
++        goto out_kfree;
+ 
+     if (copy_to_user((void __user *) ioctl.data,
+                 data, ioctl.data_size)) {
+-        kfree(data);
+-        return -EFAULT;
++        retval = -EFAULT;
++        goto out_kfree;
+     }
+-    kfree(data);
+ 
+     if (__copy_to_user((void __user *) arg, &ioctl, sizeof(ioctl))) {
+         retval = -EFAULT;
++        goto out_kfree;
+     }
+ 
+     EC_MASTER_DBG(master, 1, "Finished SoE read request.\n");
++
++out_kfree:
++    kfree(data);
+     return retval;
+ }
+ 
+@@ -3390,11 +3430,10 @@
+ {
+     ec_ioctl_slave_soe_write_t ioctl;
+     u8 *data;
+-    int retval;
++    int ret;
+ 
+-    if (copy_from_user(&ioctl, (void __user *) arg, sizeof(ioctl))) {
++    if (copy_from_user(&ioctl, (void __user *) arg, sizeof(ioctl)))
+         return -EFAULT;
+-    }
+ 
+     data = kmalloc(ioctl.data_size, GFP_KERNEL);
+     if (!data) {
+@@ -3403,24 +3442,26 @@
+         return -ENOMEM;
+     }
+     if (copy_from_user(data, (void __user *) ioctl.data, ioctl.data_size)) {
+-        kfree(data);
+-        return -EFAULT;
++        ret = -EFAULT;
++        goto out_kfree;
+     }
+ 
+-    retval = ecrt_master_write_idn(master, ioctl.slave_position,
++    ret = ecrt_master_write_idn(master, ioctl.slave_position,
+             ioctl.drive_no, ioctl.idn, data, ioctl.data_size,
+             &ioctl.error_code);
+-    kfree(data);
+-    if (retval) {
+-        return retval;
+-    }
++    if (ret)
++        goto out_kfree;
+ 
+     if (__copy_to_user((void __user *) arg, &ioctl, sizeof(ioctl))) {
+-        retval = -EFAULT;
++        ret = -EFAULT;
++	goto out_kfree;
+     }
+ 
+     EC_MASTER_DBG(master, 1, "Finished SoE write request.\n");
+-    return retval;
++
++out_kfree:
++    kfree(data);
++    return ret;
+ }
+ 
+ /******************************************************************************

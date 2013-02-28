@@ -1,0 +1,75 @@
+# -*- mode:python; -*-
+DESCRIPTION = "Ethercat driver"
+LICENSE = "GPLv2"
+
+SRC_URI = "file://etherlabmaster.tar.gz"
+
+SRC_URI += " \
+	file://ethercat.conf \
+	file://ip_link_control.patch \
+	file://ethercat-cdev-errhandling.patch \
+	file://eoe-include-semaphore-h.patch \
+	file://include-linux-slab-h.patch \
+"
+S = "${SRCDIR}/etherlabmaster"
+
+inherit mdev
+SRC_URI += "file://mdev.conf"
+
+# FIXME: host:libstdc++ was already in CLASS_DEPENDS, so something
+# is broken here!
+DEPENDS += "libstdc++ librt"
+
+inherit c++ autotools kernel-modules
+
+EXTRA_OECONF = " \
+	--with-linux-dir=${STAGE_DIR}/${HOST_TYPE}${kernelsrcdir} \
+	--enable-generic \
+	--disable-8139too --disable-e100 --disable-e1000 --disable-r8169 \
+	--disable-eoe \
+	--disable-cycles \
+	--enable-tool \
+	--enable-userlib \
+	--enable-tty \
+	--enable-hrtimer \
+	"
+
+MAKE_TARGETS = "modules"
+
+do_configure[prefuncs] += "do_configure_ethercat_bootstrap"
+do_configure_ethercat_bootstrap () {
+    ./bootstrap
+}
+
+do_compile () {
+	oe_runmake all || die "make failed"
+
+	sed -e 's%^MODINFO=.*%MODINFO=echo%' \
+	    -e 's%^ETHERCAT_CONFIG=.*%ETHERCAT_CONFIG=${sysconfdir}/ethercat.conf%' \
+	    < ${S}/script/init.d/ethercat > ${S}/script/init.d/ethercat.tmp
+	mv ${S}/script/init.d/ethercat.tmp ${S}/script/init.d/ethercat
+
+	kernel_modules_do_compile
+}
+
+do_install () {
+	oe_runmake DESTDIR="${D}" install
+
+	unset CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
+	oe_runmake DESTDIR="${D}" INSTALL_MOD_PATH="${D}" modules_install
+
+	rm -f ${D}/etc/sysconfig/ethercat
+	rmdir ${D}/etc/sysconfig
+	install -d ${D}${sysconfdir}/rcS.d/
+	install -m 0644 ${SRCDIR}/ethercat.conf ${D}${sysconfdir}/
+	ln -s ../init.d/ethercat ${D}${sysconfdir}/rcS.d/S05ethercat
+}
+
+FILES_${PN} = "/etc /lib/modules ${bindir}"
+
+inherit auto-package-libs
+AUTO_PACKAGE_LIBS = "ethercat"
+FILES_${PN}-libethercat-dev = "${includedir}"
+
+RDEPENDS_${PN}-dev = "${PN}-lib"
+RDEPENDS_${PN} = "libstdc++ librt libethercat"

@@ -1,0 +1,10 @@
+--- etherlabmaster/master/ethernet.h.orig	2010-06-12 19:31:03.000000000 +0200
++++ etherlabmaster/master/ethernet.h	2010-06-12 19:32:03.000000000 +0200
+@@ -39,6 +39,7 @@
+ 
+ #include <linux/list.h>
+ #include <linux/netdevice.h>
++#include <linux/semaphore.h>
+ 
+ #include "globals.h"
+ #include "slave.h"
