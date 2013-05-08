@@ -3,4 +3,6 @@ require ${PN}.inc
 SRC_URI += "file://modprobe-short-options.patch"
 SRC_URI += "file://lttng-tools-fix-compiling-error-for-powerpc-arm.patch"
 
+COMPATIBLE_HOST_ARCHS = "i.86- x86_64- powerpc- powerpc64- arm-"
+
 inherit make-vpath
