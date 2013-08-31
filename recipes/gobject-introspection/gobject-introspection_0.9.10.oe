@@ -45,6 +45,9 @@ PACKAGEQA_HOST_LIBDIRS += "${libdir}/${PN}/giscanner"
 PACKAGES += "${PN}-tests"
 FILES_${PN}-tests = "${datadir}/gobject-introspection-1.0"
 
+PACKAGES =+ "${PN}-python"
+FILES_${PN}-python = "${libdir}/${PN}/giscanner/*.py*"
+
 inherit auto-package-libs
 AUTO_PACKAGE_LIBS = "girepository"
 AUTO_PACKAGE_LIBS_LIBDIR = "${libdir}:lib:-1.0"
