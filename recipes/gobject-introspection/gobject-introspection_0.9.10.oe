@@ -30,9 +30,17 @@ do_configure_fix_gliblibdir() {
       gir/Makefile.in
 }
 
+inherit libtool
+LIBTOOL_FIXUP_SEARCH_DIRS += "${D}${libdir}/${PN}/giscanner ${D}${base_libdir}"
+
 DEPENDS_${PN} = "libgirepository libffi libz \
 	libc libdl libpthread libresolv librt \
 	libgio libglib libgmodule libgobject libgthread"
+
+FILES_${PN}-dev += "${libdir}/${PN}/giscanner/*.la \
+	${libdir}/${PN}/giscanner/*.a"
+
+PACKAGEQA_HOST_LIBDIRS += "${libdir}/${PN}/giscanner"
 
 PACKAGES += "${PN}-tests"
 FILES_${PN}-tests = "${datadir}/gobject-introspection-1.0"
