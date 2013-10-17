@@ -1,6 +1,6 @@
 DESCRIPTION = "Base system password/group files."
 
-DEFAULT_PREFERENCE = "-1"
+PRIORITY = "-1"
 
 require conf/fetch/debian.conf
 SRC_URI = "${DEBIAN_MIRROR}/main/b/base-passwd/base-passwd_${PV}.tar.gz"
