@@ -9,7 +9,11 @@ RDEPENDS_SYSVINIT:USE_busybox_init = ""
 RDEPENDS_RUNIT:USE_busybox_runit = ""
 inherit c make sysvinit runit crontab
 
-DEFAULT_PREFERENCE = "1"
+# Set priority higher than busybox-initramfs
+PRIORITY			= "10"
+# stable version priority should be set to 11
+RECIPE_PREFERENCE_PRIORITY	= "12"
+PACKAGE_PREFERENCE_PRIORITY	= "13"
 
 SRC_URI = "http://www.busybox.net/downloads/busybox-${PV}.tar.bz2"
 SRC_URI_FIXES = "http://busybox.net/downloads/fixes-${PV}/"
