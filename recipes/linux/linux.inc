@@ -4,5 +4,3 @@ HOMEPAGE = "http://www.kernel.org"
 LICENSE = "GPLv2"
 
 inherit kernel
-
-DEFAULT_PREFERENCE = "1"
