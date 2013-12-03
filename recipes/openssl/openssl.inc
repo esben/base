@@ -10,8 +10,8 @@ inherit c make pkgconfig
 
 SRC_URI = "http://www.openssl.org/source/openssl-${PV}.tar.gz"
 
-DEPENDS = "${DEPENDS_HOST_OS}"
-DEPENDS_HOST_OS = "libdl"
+DEPENDS = "libgcc ${DEPENDS_HOST_OS}"
+DEPENDS_HOST_OS = "libdl libc"
 DEPENDS_HOST_OS:HOST_OS_mingw32 = ""
 
 CFLAG = "${@['-DL_ENDIAN', '-DB_ENDIAN']['${HOST_ENDIAN}'=='b']} ${HOST_CFLAGS}"
@@ -109,6 +109,7 @@ do_install () {
 	cp --dereference -R include/openssl ${D}${includedir}
 }
 
+DEPENDS_${PN} += "${DEPENDS} libcrypto libssl"
 RDEPENDS_${PN} += " ${PN}-libcrypto ${PN}-libssl ${PN}-engines ${PN}-misc"
 
 PACKAGES =+ "${PN}-misc ${PN}-engines"
@@ -129,7 +130,7 @@ LIBCRYPTO_FILES:HOST_OS_mingw32 = "${sharedlibdir}/libeay32.dll"
 FILES_${PN}-libssl += " ${LIBSSL_FILES}"
 LIBSSL_FILES = ""
 LIBSSL_FILES:HOST_OS_mingw32 = "${sharedlibdir}/ssleay32.dll"
-DEPENDS_${PN}-libcrypto += " ${DEPENDS}"
-DEPENDS_${PN}-libssl += " ${DEPENDS}"
-RDEPENDS_${PN}-libcrypto += "libc libgcc ${DEPENDS_HOST_OS}"
-RDEPENDS_${PN}-libssl += "libc ${DEPENDS_HOST_OS} libcrypto"
+DEPENDS_${PN}-libcrypto += "${DEPENDS}"
+DEPENDS_${PN}-libssl += "${DEPENDS} libcrypto"
+RDEPENDS_${PN}-libcrypto += "${DEPENDS}"
+RDEPENDS_${PN}-libssl += "${DEPENDS} libcrypto"
