@@ -88,6 +88,10 @@ do_configure () {
 		--libdir=${libdir} \
 		--openssldir=${libdir}/ssl \
 		$target
+
+        # Bulk on LDFLAGS to linking of both shared libraries and applications
+        sed -i -e "s%^\(SHARED_LDFLAGS\)=\(.*\)%\1=\2 ${LDFLAGS}%m" Makefile
+        sed -i -e "s%^\(LDFLAGS\)=\(.*\)%\1=\2 ${LDFLAGS}%m" Makefile.shared
 }
 
 do_compile () {
