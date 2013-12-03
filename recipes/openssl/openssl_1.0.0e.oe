@@ -1,6 +1,7 @@
 require openssl.inc
 
 SRC_URI += "file://engines-install-in-libdir-ssl.patch"
+SRC_URI += "file://ldflags-rpath.patch"
 
 SRC_URI += "file://parallel-make.patch"
 
