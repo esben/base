@@ -96,4 +96,8 @@ do_install_lighttpd_extra() {
 FILES_${PN} += "${sysconfdir} /www"
 FILES_${PN} += "${libdir}/mod_*"
 
+PACKAGES =+ "${PN}-config"
+FILES_${PN}-config = "${sysconfdir}/lighttpd.conf"
+RDEPENDS_${PN} += "${PN}-config"
+
 RDEPENDS_${PN} += "libc libgcc libdl libm"
