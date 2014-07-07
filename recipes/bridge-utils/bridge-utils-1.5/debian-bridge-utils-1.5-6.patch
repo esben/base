@@ -1,0 +1,1516 @@
+--- bridge-utils-1.5.orig/doc/brctl.8
++++ bridge-utils-1.5/doc/brctl.8
+@@ -89,7 +89,7 @@
+ .B brctl showmacs <brname>
+ shows a list of learned MAC addresses for this bridge.
+ 
+-.B brctl setageingtime <brname> <time>
++.B brctl setageing <brname> <time>
+ sets the ethernet (MAC) address ageing time, in seconds. After <time>
+ seconds of not having seen a frame coming from a certain address, the
+ bridge will time out (delete) that address from the Forwarding
+@@ -107,7 +107,7 @@
+ protocol. This protocol is used for finding the shortest path between
+ two ethernets, and for eliminating loops from the topology. As this
+ protocol is a standard, linux bridges will interwork properly with
+-other third party bridge products. Bridges communicate with eachother
++other third party bridge products. Bridges communicate with each other
+ by sending and receiving BPDUs (Bridge Protocol Data Units). These
+ BPDUs can be recognised by an ethernet destination address of
+ 01:80:c2:00:00:00.
+--- bridge-utils-1.5.orig/brctl/Makefile.in
++++ bridge-utils-1.5/brctl/Makefile.in
+@@ -37,7 +37,7 @@
+ 	$(CC) $(LDFLAGS) $(brctl_OBJECTS) $(LIBS) -o brctl
+ 
+ %.o: %.c brctl.h
+-	$(CC) $(CFLAGS) $(INCLUDE) -c $< 
++	$(CC) $(CFLAGS) $(CPPFLAGS) $(INCLUDE) -c $< 
+ 
+ clean:
+ 	rm -f *.o brctl core
+--- bridge-utils-1.5.orig/brctl/brctl.c
++++ bridge-utils-1.5/brctl/brctl.c
+@@ -69,7 +69,8 @@
+ 	argc -= optind;
+ 	argv += optind;
+ 	if ((cmd = command_lookup(*argv)) == NULL) {
+-		fprintf(stderr, "never heard of command [%s]\n", argv[1]);
++/* Debian bug #406907 */
++		fprintf(stderr, "never heard of command [%s]\n", argv[0]);
+ 		goto help;
+ 	}
+ 	
+--- bridge-utils-1.5.orig/debian/changelog
++++ bridge-utils-1.5/debian/changelog
+@@ -0,0 +1,267 @@
++bridge-utils (1.5-6) unstable; urgency=low
++
++  * Will rewrite post wheezy, changing to suggests. Closes: #693095.
++  * Applied patch to fix man typo. Closes: #683710.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Wed, 14 Nov 2012 10:39:43 +0100
++
++bridge-utils (1.5-5) unstable; urgency=low
++
++  * Set Multi-Arch: foreign. Closes: #689144.
++  * Add a depends on net-tools. Closes: #688677.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Thu, 08 Nov 2012 19:56:15 +0100
++
++bridge-utils (1.5-4) unstable; urgency=low
++
++  * Remove mkdir and exit if /run/network doesn't exist. Thanks
++    to Andrew Shadura. Closes: #676183.
++  * Allow hotplug of ports to be user configurable and default
++    to disable. Closes: #673490.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Fri, 29 Jun 2012 10:56:51 +0200
++
++bridge-utils (1.5-3) unstable; urgency=low
++
++  * First version targetting Wheezy.
++  * Lintian cleans including complying with hardening, ...
++  * Enable ipv6 on ports when taking bridge interface down. Thanks to
++    David Fries for the bug and patch. Closes: #651652.
++  * Now that #568479 is gone we can hopefully sync with Ubuntu:
++    Include the new Steve's udev rule to allow attaching hotplug devices.
++    Extend the definition of 'bridge_ports all' to support biosdevname.
++    Thanks to Steve Langasek for his help. Closes: #626152.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Mon, 09 May 2011 19:02:48 +0200
++
++bridge-utils (1.5-2) unstable; urgency=low
++
++  * Include Ubuntu's patch to factor out parsing of bridge_ports into
++    a reusable shell library.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Tue, 03 May 2011 19:35:38 +0200
++
++bridge-utils (1.5-1) unstable; urgency=low
++
++  * New upstream version. Closes: #611761.
++  * Relocate ifupdown.sh to /lib/bridge-utils and brctl to /sbin.
++    Closes: #569350.
++  * Removed SMPNOTES, upstream updated FIREWALL. Closes: #518649.
++  * Removed the 30 seconds wait. Closes: #549696.
++  * Only suggest ifupdown. Closes: #595115.
++  * Remove the versioning from the description. Closes: #595116.
++  * Disable ipv6 on the interfaces of the bridge. Closes: #607741.
++  * On newer kernels we wait only till we forward. Closes: #549696.
++  * Use sleep 0.1 (0.01 was too much), thanks Mikhail. Closes: #572835.
++  * Set ret to -1 on errno to avoid returning 0. Closes: #574363.
++  * Fix manpage setageing explanation. Closes: #523141.
++  * Make it lintian clean again.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Tue, 19 Apr 2011 19:45:51 +0200
++
++bridge-utils (1.4-5) unstable; urgency=low
++
++  * Try to fix the lack of bridge/ on the sysfs paths. Closes: 496491.
++  * Add a comment on the bridge-utils-interfaces manpage about the
++    misusage of stanzas for the bridge ports in the interfaces file.
++    Closes: #488313.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Wed, 27 Aug 2008 21:21:41 +0200
++
++bridge-utils (1.4-4) unstable; urgency=low
++
++  * Add a set of examples to help the bridges on hibernation, ...
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Tue, 08 Jul 2008 21:26:46 +0200
++
++bridge-utils (1.4-3) unstable; urgency=low
++
++  * Fix reference to the bridge-utils-interfaces manpage on the
++    README.Debian file. Closes: #484853.
++  * Bump Standards-Version.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Sun, 15 Jun 2008 12:29:13 +0200
++
++bridge-utils (1.4-2) unstable; urgency=low
++
++  * Fix README.Debian pointer. Closes: #461524.
++  * Fix bridge-utils-interfaces(5). Closes: #464500.
++  * Fix package descriptions. Closes: #466783.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Thu, 17 Apr 2008 13:18:30 +0200
++
++bridge-utils (1.4-1) unstable; urgency=low
++
++  * New upstream version.
++  * Merge if-pre-up and if-post-down scripts into ifupdown.sh and don't
++    consider it a conffile anymore (moved to /usr/share/bridge-utils).
++  * Add a watch file.
++  * Write a bridge-utils-interfaces manpage with the information that
++    we used to have on the README.Debian file. Closes: #410278.
++  * Add the new option bridge_waitport to wait for ports to become
++    available. Closes: #454752.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Wed, 09 Jan 2008 23:05:22 +0100
++
++bridge-utils (1.2-2) unstable; urgency=low
++
++  * Fix port no and id reading from sysfs (taken from git).
++  * Fix segfault on bridge named "bridge", thanks Robert. Closes: #431860.
++  * Fix printing of unknown commands, thanks Julien. Closes: #406907.
++  * Fix the FAQ url. Closes: #410277.
++  * Apply the regexp patch. Closes: #405215.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Mon, 15 Oct 2007 22:57:46 +0200
++
++bridge-utils (1.2-1) unstable; urgency=low
++
++  * New upstream version.
++  * Updated scripts so that you can now use "all" + others to select
++    all the eth* interfaces + others you'd like to add.
++  * Updated README.Debian with info on wireless. Closes: #378508.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Thu, 28 Sep 2006 21:16:09 +0200
++
++bridge-utils (1.1-3) unstable; urgency=low
++
++  * Fix the ENODEV message on deleting an interface. Closes: #383938.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Sat, 26 Aug 2006 19:22:45 +0200
++
++bridge-utils (1.1-2) unstable; urgency=low
++
++  * Update sources to current git. Closes: #376914.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Wed, 12 Jul 2006 23:46:59 +0200
++
++bridge-utils (1.1-1) unstable; urgency=low
++
++  * New upstream version.
++  * Uses libsysfs2. Closes: #347634.
++  * Added an example of an anonymous bridge (thanks to M.Biebl for
++    the idea). Closes: #348946.
++  * Changed the message for ENODEV. Closes: #348617.
++  * Added the bridge_hw config option (thanks to Jerome for the idea).
++    See the README for a full explanation on this. Closes: #271406.
++
++ -- Santiago García Mantiñán <manty@debian.org>  Tue,  7 Feb 2006 19:15:56 +0100
++
++bridge-utils (1.0.6-1) unstable; urgency=low
++
++  * The "Sorry it took so long" release (AKA I've missed sarge).
++    Yes, that's the real me (in UTF).
++  * New upstream version.
++  * Call vlan on post-down so that vlan interfaces get removed.
++  * Take down bridge interfaces before deleting bridge, also reorder
++    the instructions in post-down (thanks to Loïc Minier).
++    Closes: #302521.
++  * Fix little doc bug. Closes: #296881.
++
++ -- Santiago García Mantiñán <manty@debian.org>  Thu, 19 May 2005 18:44:06 +0200
++
++bridge-utils (1.0.4-1) unstable; urgency=low
++
++  * New upstream version.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Thu, 10 Jun 2004 16:04:37 +0200
++
++bridge-utils (1.0.3+1.0.4rc3-1) unstable; urgency=low
++
++  * New upstream version. Closes: #213582, #252903.
++  * Changed stp notes to signal the change in the kernel's default on
++    latest kernels. Closes: #223185.
++  * Clarified that with bridge_ports all we mean the ethX interfaces.
++    Closes: #226231.
++  * Changed package description to reflect that this package works in
++    2.4 or later kernels. Closes: #250136.
++  * No longer depends on ifupdown, but I still strongly suggest it.
++    Changed doc acordingly. Closes: #249432.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Sat,  5 Jun 2004 01:50:34 +0200
++
++bridge-utils (0.9.6-5) unstable; urgency=low
++
++  * The "happy birthday to every user/devel of the world" release.
++  * Remove debconf questions to enter sarge with a clean 10th
++    aniversary spirit. Closes: #187768, #205790.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Sun, 17 Aug 2003 17:53:31 +0200
++
++bridge-utils (0.9.6-4) unstable; urgency=low
++
++  * Add support for autoconfiguring VLAN interfaces, idea and patch
++    from Paul Slootman. Closes: #189386.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Thu,  8 May 2003 20:21:14 +0200
++
++bridge-utils (0.9.6-3) unstable; urgency=low
++
++  * Fix /etc/network/if-up.d/bridge not being removed. It will be
++    automatically removed or you'll be asked via debconf.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Thu, 13 Feb 2003 17:43:56 +0100
++
++bridge-utils (0.9.6-2) unstable; urgency=low
++
++  * Reworked the scripts, now dhcp should work ok. Closes: #179051.
++    This also helps #164823, set address 0.0.0.0 with any netmask,
++    it gives an error but the interface remains up with no address.
++    It isn't perfect, but will do till ifupdown fixes #164823.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Thu, 30 Jan 2003 23:10:33 +0100
++
++bridge-utils (0.9.6-1) unstable; urgency=low
++
++  * New upstream version. Closes: #143069.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Tue, 17 Dec 2002 20:20:46 +0100
++
++bridge-utils (0.9.5-2) unstable; urgency=low
++
++  * Patched to allow the bridge to start without any interfaces
++    attached to it by using "bridge_ports none" on the configuration
++    of the bridge interface. Closes: #136136.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Sat,  9 Mar 2002 20:43:17 +0100
++
++bridge-utils (0.9.5-1) unstable; urgency=low
++
++  * New upstream version.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Mon, 11 Feb 2002 21:23:26 +0100
++
++bridge-utils (0.9.4-1) unstable; urgency=low
++
++  * New upstream version.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Mon,  7 Jan 2002 18:48:32 +0100
++
++bridge-utils (0.9.3-1) unstable; urgency=low
++
++  * New upstream version (fixes the 42.94s timer wrap).
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Sat, 23 Jun 2001 21:45:36 +0200
++
++bridge-utils (0.9.2-3) unstable; urgency=low
++
++  * By default we wait for the bridge to get ready.
++  * Upgraded to standards 3.1.0.0, debhelper 3 and Build-Depends.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Fri, 18 May 2001 18:15:08 +0200
++
++bridge-utils (0.9.2-2) unstable; urgency=low
++
++  * Removed the -dev package until it is really needed.
++  * Upgraded to ifupdown 0.6.0 way of working.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Sat, 24 Feb 2001 17:31:02 +0100
++
++bridge-utils (0.9.2-1) unstable; urgency=low
++
++  * Initial Release.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>  Wed,  8 Nov 2000 20:09:10 +0100
++
++Local variables:
++mode: debian-changelog
++End:
+--- bridge-utils-1.5.orig/debian/ifupdown.sh
++++ bridge-utils-1.5/debian/ifupdown.sh
+@@ -0,0 +1,210 @@
++#!/bin/sh
++
++# You don't usually need to touch this file at all, the full configuration
++# of the bridge can be done in a standard way on /etc/network/interfaces.
++
++# Have a look at /usr/share/doc/bridge-utils/README.Debian if you want
++# more info about the way on wich a bridge is set up on Debian.
++
++if [ ! -x /sbin/brctl ]
++then
++  exit 0
++fi
++
++. /lib/bridge-utils/bridge-utils.sh
++
++case "$IF_BRIDGE_PORTS" in
++    "")
++	exit 0
++	;;
++    none)
++	INTERFACES=""
++	;;
++    *)
++	INTERFACES="$IF_BRIDGE_PORTS"
++	;;
++esac
++
++# Previous work (create the interface)
++if [ "$MODE" = "start" ] && [ ! -d /sys/class/net/$IFACE ]; then
++  brctl addbr $IFACE || exit 1
++# Wait for the ports to become available
++  if [ "$IF_BRIDGE_WAITPORT" ]
++  then
++    set x $IF_BRIDGE_WAITPORT &&   
++    shift &&
++    WAIT="$1" &&
++    shift &&
++    WAITPORT="$@" &&
++    if [ -z "$WAITPORT" ];then WAITPORT="$IF_BRIDGE_PORTS";fi &&
++    STARTTIME=$(date +%s) &&
++    NOTFOUND="true" &&
++    /bin/echo -e "\nWaiting for a max of $WAIT seconds for $WAITPORT to become available." &&
++    while [ "$(($(date +%s)-$STARTTIME))" -le "$WAIT" ] && [ -n "$NOTFOUND" ]
++    do
++      NOTFOUND=""
++      for i in $WAITPORT
++      do
++        if ! grep -q "^[\ ]*$i:.*$" /proc/net/dev;then NOTFOUND="true";fi
++      done
++      if [ -n "$NOTFOUND" ];then sleep 1;fi
++    done
++  fi
++# Previous work (stop the interface)
++elif [ "$MODE" = "stop" ];  then
++  ifconfig $IFACE down || exit 1
++fi
++
++all_interfaces= &&
++unset all_interfaces &&
++bridge_parse_ports $INTERFACES | while read i
++do
++  for port in $i
++  do
++    # We attach and configure each port of the bridge
++    if [ "$MODE" = "start" ] && [ ! -d /sys/class/net/$IFACE/brif/$port ]; then
++      if [ -x /etc/network/if-pre-up.d/vlan ]; then
++        env IFACE=$port /etc/network/if-pre-up.d/vlan
++      fi
++      if [ "$IF_BRIDGE_HW" ]
++      then
++         ifconfig $port down; ifconfig $port hw ether $IF_BRIDGE_HW
++      fi
++      if [ -f /proc/sys/net/ipv6/conf/$port/disable_ipv6 ]
++      then
++        echo 1 > /proc/sys/net/ipv6/conf/$port/disable_ipv6
++      fi
++      brctl addif $IFACE $port && ifconfig $port 0.0.0.0 up
++    # We detach each port of the bridge
++    elif [ "$MODE" = "stop" ] && [ -d /sys/class/net/$IFACE/brif/$port ];  then
++      ifconfig $port down && brctl delif $IFACE $port && \
++        if [ -x /etc/network/if-post-down.d/vlan ]; then
++          env IFACE=$port /etc/network/if-post-down.d/vlan
++        fi
++      if [ -f /proc/sys/net/ipv6/conf/$port/disable_ipv6 ]
++      then
++        echo 0 > /proc/sys/net/ipv6/conf/$port/disable_ipv6
++      fi
++    fi
++  done
++done
++
++# We finish setting up the bridge
++if [ "$MODE" = "start" ] ; then
++
++  if [ "$IF_BRIDGE_AGEING" ]
++  then
++    brctl setageing $IFACE $IF_BRIDGE_AGEING
++  fi
++
++  if [ "$IF_BRIDGE_BRIDGEPRIO" ]
++  then
++    brctl setbridgeprio $IFACE $IF_BRIDGE_BRIDGEPRIO
++  fi
++
++  if [ "$IF_BRIDGE_FD" ]
++  then
++    brctl setfd $IFACE $IF_BRIDGE_FD
++  fi
++
++  if [ "$IF_BRIDGE_GCINT" ]
++  then
++    brctl setgcint $IFACE $IF_BRIDGE_GCINT
++  fi
++
++  if [ "$IF_BRIDGE_HELLO" ]
++  then
++    brctl sethello $IFACE $IF_BRIDGE_HELLO
++  fi
++
++  if [ "$IF_BRIDGE_MAXAGE" ]
++  then
++    brctl setmaxage $IFACE $IF_BRIDGE_MAXAGE
++  fi
++
++  if [ "$IF_BRIDGE_PATHCOST" ]
++  then
++    brctl setpathcost $IFACE $IF_BRIDGE_PATHCOST
++  fi
++
++  if [ "$IF_BRIDGE_PORTPRIO" ]
++  then
++    brctl setportprio $IFACE $IF_BRIDGE_PORTPRIO
++  fi
++
++  if [ "$IF_BRIDGE_STP" ]
++  then
++    brctl stp $IFACE $IF_BRIDGE_STP
++  fi
++
++
++  # We activate the bridge
++  ifconfig $IFACE 0.0.0.0 up
++
++
++  # Calculate the maximum time to wait for the bridge to be ready
++  if [ "$IF_BRIDGE_MAXWAIT" ]
++  then
++    MAXWAIT=$IF_BRIDGE_MAXWAIT
++  else
++    MAXWAIT=$(brctl showstp $IFACE 2>/dev/null|sed -n 's/^.*forward delay[ \t]*\(.*\)\..*bridge forward delay[ \t]*\(.*\)\..*$/\1 \2/p')
++    if [ "$MAXWAIT" ]
++    then
++      if [ ${MAXWAIT% *} -gt ${MAXWAIT#* } ]
++      then
++        MAXWAIT=$((2*(${MAXWAIT% *}+1)))
++      else
++        MAXWAIT=$((2*(${MAXWAIT#* }+1)))
++      fi
++    else
++      if [ "$IF_BRIDGE_FD" ]
++      then
++        MAXWAIT=$((2*(${IF_BRIDGE_FD%.*}+1)))
++      else
++        MAXWAIT=32
++      fi
++      /bin/echo -e "\nWaiting $MAXWAIT seconds for $IFACE to get ready."
++      sleep $MAXWAIT
++      MAXWAIT=0
++    fi
++  fi
++
++
++  # Wait for the bridge to be ready
++  if [ "$MAXWAIT" != 0 ]
++  then
++    /bin/echo -e "\nWaiting for $IFACE to get ready (MAXWAIT is $MAXWAIT seconds)."
++
++    unset BREADY
++    unset TRANSITIONED
++    COUNT=0
++
++    # Use 0.1 delay if available
++    sleep 0.1 2>/dev/null && MAXWAIT=$((MAXWAIT * 10))
++
++    while [ ! "$BREADY" -a $COUNT -lt $MAXWAIT ]
++    do
++      sleep 0.1 2>/dev/null || sleep 1
++      COUNT=$(($COUNT+1))
++      BREADY=true
++      for i in $(brctl showstp $IFACE|sed -n 's/^.*port id.*state[ \t]*\(.*\)$/\1/p')
++      do
++        if [ "$i" = "listening" -o "$i" = "learning" -o "$i" = "forwarding" -o "$i" = "blocking" ]
++        then
++          TRANSITIONED=true
++        fi
++        if [ "$i" != "forwarding" -a "$i" != "blocking" ] && [ ! "$TRANSITIONED" -o "$i" != "disabled" ]
++        then
++          unset BREADY
++        fi
++      done
++    done
++
++  fi
++
++# Finally we destroy the interface
++elif [ "$MODE" = "stop" ];  then
++
++  brctl delbr $IFACE
++
++fi
+--- bridge-utils-1.5.orig/debian/copyright
++++ bridge-utils-1.5/debian/copyright
+@@ -0,0 +1,16 @@
++This package was debianized by Santiago Garcia Mantinan <manty@debian.org>
++on Wed,  8 Nov 2000 20:09:10 +0100.
++
++It was downloaded from the sourceforge bridge project at:
++
++	http://sourceforge.net/project/showfiles.php?group_id=26089
++
++Upstream Authors:
++	Stephen Hemminger <shemminger@vyatta.com>
++	Lennert Buytenhek <buytenh@gnu.org>
++
++Copyright:
++	Copyright (C) 2000 Lennert Buytenhek
++
++This program is licensed under the GPL version 2, which is available in
++/usr/share/common-licenses/GPL-2, on debian systems.
+--- bridge-utils-1.5.orig/debian/bridge-utils.bridge-network-interface.udev
++++ bridge-utils-1.5/debian/bridge-utils.bridge-network-interface.udev
+@@ -0,0 +1 @@
++ACTION=="add", SUBSYSTEM=="net", RUN+="bridge-network-interface"
+--- bridge-utils-1.5.orig/debian/compat
++++ bridge-utils-1.5/debian/compat
+@@ -0,0 +1 @@
++9
+--- bridge-utils-1.5.orig/debian/README.Debian
++++ bridge-utils-1.5/debian/README.Debian
+@@ -0,0 +1,20 @@
++bridge-utils for Debian
++-----------------------
++
++From ifupdown 0.6.0 we have a really configurable /etc/network/interfaces so
++from now on one can configure almost anything he wants of the bridge using
++the Debian standard way of configuring an interface, that is, if you have
++ifupdown installed. To be able to do that we are providing a couple of links
++to /usr/share/bridge-utils/ifupdown.sh, one from /etc/network/if-pre-up.d
++and another from /etc/network/if-post-down.d.
++
++Configuration for bridges is much easier this way. Check the manpage for
++bridge-utils-interfaces(5) to learn how to configure a bridge the easy way
++using these scripts for ifupdown.
++
++Check also the examples if you are planning to hibernate or suspend your
++machine as this usually breaks the bridge if the power management utilities
++aren't ready to cope with us. I have added examples for hibernate and
++pm-utils, if you have other examples or sugestions or need any, contact me.
++
++ -- Santiago Garcia Mantinan <manty@debian.org>, Sun, 13 Jan 2008 17:47:16 +0100
+--- bridge-utils-1.5.orig/debian/bridge-utils.default
++++ bridge-utils-1.5/debian/bridge-utils.default
+@@ -0,0 +1,4 @@
++# /etc/default/bridge-utils
++
++# Shoud we add the ports of a bridge to the bridge when they are hotplugged?
++BRIDGE_HOTPLUG=no
+--- bridge-utils-1.5.orig/debian/watch
++++ bridge-utils-1.5/debian/watch
+@@ -0,0 +1,4 @@
++
++version=3
++
++http://sf.net/bridge/bridge-utils-(.+)\.tar\.gz
+--- bridge-utils-1.5.orig/debian/bridge-utils.sh
++++ bridge-utils-1.5/debian/bridge-utils.sh
+@@ -0,0 +1,56 @@
++#!/bin/sh
++
++bridge_parse_ports()
++{
++  while [ x"${1+set}" = xset ]
++  do
++    # For compatibility: the `all' option.
++    case $1 in
++      all)
++	shift &&
++	set regex eth.\* em.\* 'p[0-9].*' noregex "$@"
++	;;
++    esac
++
++    # Primitive state machine...
++    case $1-`uname -s` in
++      regex-Linux)
++	all_interfaces=`sed -n 's%^[\ ]*\([^:]*\):.*$%\1%p' < /proc/net/dev`
++	shift
++	;;
++      regex-*)
++	echo -n "$0 needs to be ported for your `uname -s` system.  " >&2
++	echo "Trying to continue nevertheless." >&2
++	shift
++	;;
++      noregex-*)
++	all_interfaces=
++	unset all_interfaces
++	shift
++	;;
++    esac
++
++    case ${all_interfaces+regex}-${1+set} in
++      regex-set)
++	# The following interface specification are to be parsed as regular
++	# expressions against all interfaces the system provides.
++	i=`egrep "^$1$" << EOAI
++$all_interfaces
++EOAI
++`
++	shift
++	;;
++      *-set)
++	# Literal interfaces.
++	i=$1
++	shift
++	;;
++      *)
++	# No interface specification is following.
++	i=
++	;;
++    esac
++
++    echo $i
++  done
++}
+--- bridge-utils-1.5.orig/debian/postinst
++++ bridge-utils-1.5/debian/postinst
+@@ -0,0 +1,11 @@
++#!/bin/sh
++set -e
++
++if [ -e /usr/share/debconf/confmodule ]; then
++	. /usr/share/debconf/confmodule
++	db_purge
++fi
++
++#DEBHELPER#
++
++exit 0
+--- bridge-utils-1.5.orig/debian/bridge-utils-interfaces.5
++++ bridge-utils-1.5/debian/bridge-utils-interfaces.5
+@@ -0,0 +1,241 @@
++.\" -*- nroff -*-
++.\" macros
++.de EX \" Begin Example
++.  IP
++.  ft CW
++.  nf
++.  ne \\$1
++..
++.de EE \" End Example
++.  ft P
++.  fi
++.  PP
++..
++.TH BRIDGE-UTILS-INTERFACES 5 "January 13 2008" "bridge-utils" "File formats"
++.SH NAME
++bridge-utils-interfaces \- bridge-utils extensions for the
++.BR interfaces (5)
++file format
++.SH DESCRIPTION
++/etc/network/interfaces contains network interface configuration
++information for the
++.BR ifup (8)
++and
++.BR ifdown (8)
++commands.
++This manpage describes the bridge extensions to the standard
++.BR interfaces (5)
++file format.
++.P
++The main extension is the bridge_ports option, with it you describe that the
++interface is a bridge and what ports does it have. These ports are the
++interfaces that are part of the bridge, and they shouldn't have any stanzas
++defining them on the interfaces file. Other extensions allow you to tune the
++bridge options or change a bridge behaviour.
++.P
++We'll see this with an example:
++.EX
++auto br0
++iface br0 inet static
++    address 192.168.1.2
++    network 192.168.1.0
++    netmask 255.255.255.0
++    broadcast 192.168.1.255
++    gateway 192.168.1.1
++    bridge_ports all
++.EE
++Well, after setting this, an ifup br0, or the next reboot, should let you
++have a bridge up and running, after waiting for the ports to get to the
++forwarding status, of course. This bridge will be using all your ethX
++interfaces, as we have stated on the bridge_ports line.
++.P
++The Debian bridge setup scripts will wait for it to get ready to
++work. They do this by trying to guess the maximum time that the bridge
++will need to get to the forwarding status, and by default, they will wait
++for the bridge to get there, or for the estimated maximum time to go by.
++This is done so that the services that are loaded after the bridge setup
++have a working network interface and don't fail because the bridge is
++still not working. See bridge_maxwait if you want to change this
++behaviour.
++.P
++An example of how to setup a so called anonymous bridge (a bridge without
++an assigned IP) would look like this:
++.EX
++iface br1 inet manual
++	bridge_ports eth1 eth2
++	bridge_maxwait 0
++.EE
++Here we select the interfaces eth1 and eth2 to be added to the bridge
++interface br1, which will be an anonymous bridge, we also tell the
++scripts not to wait, as we won't be having any service running on that
++interface (it doesn't even have an IP).
++.P
++An example of a little more complex bridge setup could be:
++.EX
++auto br0
++iface br0 inet static
++    address 192.168.1.2
++    network 192.168.1.0
++    netmask 255.255.255.0
++    broadcast 192.168.1.255
++    bridge_ports all weird0
++    bridge_bridgeprio 32767
++    bridge_portprio eth0 129
++    bridge_fd 5
++.EE
++In this example we select all the eth* devices plus a weird device to be
++added to the bridge, also we change the bridge default priority to a
++higher one so that this bridge becomes the root (if there are no bridges
++with higher priority on the net, that is) and also we lower priority of
++port eth0 so that it is not used if there are other ports with higher
++priority to reach the same destination, at the end we lower the default
++forward delay.
++.P
++If there is a need to set up any of the interfaces participating on the
++bridge and not the bridge itself, then we must add the commands to set up
++those settings in a "pre-up" or "up" statement. This means that if we
++have a wireless card that we want to add to a bridge and we want to set
++it to master, and select the essid, instead of using the typical
++wireless_* commands we could add to the bridge definition something like
++this:
++.EX
++pre-up iwconfig wlan0 mode master essid myESSID
++.EE
++Be aware, however, that using wireless cards as part of a bridge is not a
++good idea if the card belonging to the bridge is in managed mode. 
++Trying to bridge packets coming out of our LAN through a wireless card
++that is set in managed mode (the card is a client of an AP) is bound to
++give problems, as the AP will probably refuse packets with source MAC
++addresses which are not associated (this will be the case of other
++machines going through the wireless card of the bridge into the AP).
++.P
++Multiple stanzas of a bridge definition are currently not supported, so
++if you want to add a ipv6 and a ipv4 to a bridge do it all in one
++definition by using the "up" option. If however you still want to use
++multiple stanzas or would like to read more on this bug you can see it
++at http://bugs.debian.org/319832
++.SH IFACE OPTIONS
++A little explanation on the new options that can be used on
++/etc/network/interfaces to setup the bridge, so you don't have to go and
++look at the scripts...
++.TP
++.BI bridge_ports " interface specification"
++this option must exist for the scripts to setup the bridge, with
++it you specify the ports you want to add to your bridge, either
++using "none" if you want a bridge without any interfaces or you
++want to add them later using brctl, or a list of the interfaces
++you want to add separated by spaces, for example:
++.RS
++.EX
++bridge_ports eth0 eth4
++.EE
++You should not put any lines to configure the interfaces that
++will be used by the bridge, as this will be setup automatically
++by the scripts when bringing the bridge up.
++.P
++If you need to specify the interfaces more flexibly, you can
++use the following syntax (most useful on a Xen dom0):
++.EX
++bridge_ports regex (eth|vif).*
++.EE
++This means to evaluate (as in
++.BR egrep (1))
++the expressions that
++follow after "regex" until either the end or a "noregex" statement
++is reached.  The regular expressions are evaluated against all
++local interfaces and those that match are added.
++.P
++Specifying "all" is short for "regex eth.* em.* p[0-9].* noregex" and will
++get all the ethX and biosdevname-format (emX and pX) interfaces added to the
++bridge.
++.P
++Carrying this to the extremes, the following is valid syntax:
++.EX
++bridge_ports all regex if.0 noregex ext0 regex vif.*
++.EE
++This will add all ethX interfaces, the ifX0 interfaces, the ext0
++interface and all vifX interfaces.
++.SS
++.TP
++.BI bridge_ageing " time"
++set ageing time, default is 300, can have a fractional part.
++.TP
++.BI bridge_bridgeprio " priority"
++set bridge priority, \fIpriority\fP is between 0 and 65535, default is
++32768, affects bridge id, lowest priority bridge will be the root.
++.TP
++.BI bridge_fd " time"
++set bridge forward delay to \fItime\fP seconds, default is 15, can
++have a fractional part.
++.TP                                
++.BI bridge_gcint " time"
++set garbage collection interval to \fItime\fP seconds, default is 4,
++can have a fractional part.
++.TP                    
++.BI bridge_hello " time"
++set hello time to \fItime\fP seconds, default is 2, can have a
++fractional part.
++.TP                    
++.BI bridge_hw " MAC address"
++set the Ethernet MAC address of all the bridge interfaces to the
++specified one so that the bridge ends up having this hardware
++address as well. WARNING: use this only if you know what you are
++doing, changing the MAC address of the cards may cause trouble
++if you don't know what you are doing. To see the discussion about
++this feature and the problems that can cause you can try to have
++a look at the bug that asked for this feature visiting
++\fIhttp://bugs.debian.org/271406\fP
++.TP                    
++.BI bridge_maxage " time"
++set max message age to \fItime\fP seconds, default is 20, can have a
++fractional part.
++.TP                    
++.BI bridge_maxwait " time"
++forces to \fItime\fP seconds the maximum time that the Debian bridge
++setup scripts will wait for the bridge ports to get to the
++forwarding status, doesn't allow factional part. If it is equal
++to 0 then no waiting is done.
++.TP                    
++.BI bridge_pathcost " port cost"
++set path cost for a port, default is 100, \fIport\fP is the name of
++the interface to which this setting applies.
++.TP                    
++.BI bridge_portprio " port priority"
++set port priority, default is 128, affects port id, \fIport\fP is the
++name of the interface to which this setting applies.
++.TP                    
++.BI bridge_stp " state"
++turn spanning tree protocol on/off, \fIstate\fP values are on or yes
++to turn stp on and any other thing to set it off, default has
++changed to off for security reasons in latest kernels, so you
++should specify if you want stp on or off with this option, and not
++rely on your kernel's default behaviour.
++.TP                    
++.BI bridge_waitport " time [ports]"
++wait for a max of \fItime\fP seconds for the specified \fIports\fP to
++become available, if no ports are specified then those specified on
++bridge_ports will be used here. Specifying no ports here should not be used
++if we are using regex or "all" on bridge_ports, as it wouldn't work.
++.RE
++.SH FILES
++.TP
++.I /etc/network/interfaces
++definitions of network interfaces
++See
++.BR interfaces (5)
++for more information.
++.TP
++.RE
++.SH KNOWN BUGS/LIMITATIONS
++The default values shown here are current values as of this writing, but
++as they are not related to this package but to the bridge code itself, can
++change anytime.
++.SH AUTHOR
++This manpage was written by Santiago Garcia Mantinan <manty@debian.org> based
++on \fIinterfaces\fP(5).
++.SH "SEE ALSO"
++.BR brctl (8),
++.BR interfaces (5),
++.BR ifup (8),
++.BR iwconfig (8),
++.BR run\-parts (8).
+--- bridge-utils-1.5.orig/debian/docs
++++ bridge-utils-1.5/debian/docs
+@@ -0,0 +1,9 @@
++README
++THANKS
++TODO
++doc/FAQ
++doc/FIREWALL
++doc/HOWTO
++doc/PROJECTS
++doc/WISHLIST
++debian/examples
+--- bridge-utils-1.5.orig/debian/bridge-network-interface.sh
++++ bridge-utils-1.5/debian/bridge-network-interface.sh
+@@ -0,0 +1,44 @@
++#!/bin/sh
++
++# bridge-network-interface - configure a network bridge
++#
++# This service checks whether a physical network device that has been added
++# is one of the ports in a bridge config, and if so, brings up the related
++# bridge
++
++set -e
++
++if [ -z "$INTERFACE" ]; then
++	echo "missing \$INTERFACE" >&2
++	exit 1
++fi
++
++#default configuration
++BRIDGE_HOTPLUG=no
++[ -f /etc/default/bridge-utils ] && . /etc/default/bridge-utils
++
++[ "$BRIDGE_HOTPLUG" = "no" ] && exit 0
++
++. /lib/bridge-utils/bridge-utils.sh
++
++if [ -d /run/network ]; then
++   for i in $(ifquery --list --allow auto); do
++	ports=$(ifquery $i | sed -n -e's/^bridge[_-]ports: //p')
++	for port in $(bridge_parse_ports $ports); do
++		case $port in
++			$INTERFACE|$INTERFACE.*)
++				if [ ! -d /sys/class/net/$port ] &&
++				   [ -x /etc/network/if-pre-up.d/vlan ]; then
++					IFACE=$port /etc/network/if-pre-up.d/vlan
++				fi
++
++				if [ -d /sys/class/net/$port ]; then
++					ifup --allow auto $i
++					brctl addif $i $port && ifconfig $port 0.0.0.0 up
++				fi
++				break
++				;;
++		esac
++	done
++   done
++fi
+--- bridge-utils-1.5.orig/debian/control
++++ bridge-utils-1.5/debian/control
+@@ -0,0 +1,19 @@
++Source: bridge-utils
++Section: net
++Priority: optional
++Maintainer: Santiago Garcia Mantinan <manty@debian.org>
++Standards-Version: 3.9.4
++Build-Depends: debhelper (>=9.0.0), dpkg-dev (>=1.16.1), autoconf
++
++Package: bridge-utils
++Architecture: any
++Multi-Arch: foreign
++Depends: ${shlibs:Depends}, ${misc:Depends}
++Suggests: ifupdown, net-tools
++Conflicts: ifupdown (<< 0.6.0)
++Description: Utilities for configuring the Linux Ethernet bridge
++ This package contains utilities for configuring the Linux Ethernet
++ bridge in Linux. The Linux Ethernet bridge can be used for connecting
++ multiple Ethernet devices together. The connecting is fully
++ transparent: hosts connected to one Ethernet device see hosts
++ connected to the other Ethernet devices directly.
+--- bridge-utils-1.5.orig/debian/rules
++++ bridge-utils-1.5/debian/rules
+@@ -0,0 +1,122 @@
++#!/usr/bin/make -f
++# Sample debian/rules that uses debhelper. 
++# GNU copyright 1997 by Joey Hess.
++#
++# This version is for a hypothetical package that builds an
++# architecture-dependant package, as well as an architecture-independent
++# package.
++
++# Uncomment this to turn on verbose mode. 
++#export DH_VERBOSE=1
++
++IDIR=$(CURDIR)/debian/bridge-utils
++INSTALL=install
++INSTALL_PROGRAM = $(INSTALL) -p -o root -g root -m 755
++INSTALL_SCRIPT  = $(INSTALL) -p -o root -g root -m 755
++
++# These are used for cross-compiling and for saving the configure script
++# from having to guess our platform (since we know it already)
++DEB_HOST_GNU_TYPE   ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
++DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
++
++# Make sure we get the right build flags (needs dpkg >= 1.16.1)
++DPKG_EXPORT_BUILDFLAGS = 1
++include /usr/share/dpkg/buildflags.mk
++
++ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
++	CFLAGS += -O0
++else
++	CFLAGS += -O2
++endif
++ifneq (,$(findstring debug,$(DEB_BUILD_OPTIONS)))
++	CFLAGS += -g
++endif
++ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
++	INSTALL_PROGRAM += -s
++endif
++
++configure: configure-stamp
++configure-stamp:
++	dh_testdir
++	# Add here commands to configure the package.
++	autoconf
++	./configure --host=$(DEB_HOST_GNU_TYPE) --build=$(DEB_BUILD_GNU_TYPE) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info --with-linux-headers="$(CURDIR)/debian/include"
++	touch configure-stamp
++
++build: build-arch build-indep
++
++build-arch: build-stamp
++
++build-indep: build-stamp
++
++build-stamp: configure-stamp
++	dh_testdir
++
++	
++	# Add here commands to compile the package.
++	$(MAKE)
++
++	touch build-stamp
++
++clean:
++	dh_testdir
++	dh_testroot
++	rm -f build-stamp configure-stamp configure bridge-utils.spec libbridge/config.h libbridge/stamp-h1
++
++	# Add here commands to clean up after the build process.
++	[ ! -f Makefile ] || $(MAKE) maintainer-clean
++
++	dh_clean
++
++install: build
++	dh_testdir
++	dh_testroot
++	dh_prep
++	dh_installdirs
++
++	# Add here commands to install the package into debian/tmp.
++	#$(MAKE) install prefix=$(CURDIR)/debian/bridge-utils/usr
++	$(INSTALL_PROGRAM) -m 755 brctl/brctl $(IDIR)/sbin
++	$(INSTALL_SCRIPT) -m 755 debian/ifupdown.sh $(IDIR)/lib/bridge-utils/
++	ln -s /lib/bridge-utils/ifupdown.sh $(IDIR)/etc/network/if-pre-up.d/bridge
++	ln -s /lib/bridge-utils/ifupdown.sh $(IDIR)/etc/network/if-post-down.d/bridge
++	$(INSTALL_SCRIPT) -m 755 debian/bridge-utils.sh $(IDIR)/lib/bridge-utils/
++	$(INSTALL_SCRIPT) -m 755 debian/bridge-network-interface.sh $(IDIR)/lib/udev/bridge-network-interface
++	
++#	dh_movefiles
++
++# Build architecture-independent files here.
++binary-indep: build install
++# We have nothing to do by default.
++
++# Build architecture-dependent files here.
++binary-arch: build install
++	dh_testdir
++	dh_testroot
++#	dh_installdebconf
++	dh_installdocs
++	dh_installexamples
++#	dh_installmenu
++#	dh_installemacsen
++#	dh_installpam
++	dh_installinit
++	dh_installudev --name bridge-network-interface
++#	dh_installcron
++	dh_installman doc/brctl.8 debian/bridge-utils-interfaces.5
++	dh_installinfo
++#	dh_undocumented
++	dh_installchangelogs ChangeLog
++	dh_link
++#	dh_strip
++	dh_compress
++	dh_fixperms
++#	dh_makeshlibs
++	dh_installdeb
++#	dh_perl
++	dh_shlibdeps
++	dh_gencontrol
++	dh_md5sums
++	dh_builddeb
++
++binary: binary-indep binary-arch
++.PHONY: build clean binary-indep binary-arch binary install configure
+--- bridge-utils-1.5.orig/debian/dirs
++++ bridge-utils-1.5/debian/dirs
+@@ -0,0 +1,5 @@
++etc/network/if-pre-up.d
++etc/network/if-post-down.d
++sbin
++lib/bridge-utils
++lib/udev
+--- bridge-utils-1.5.orig/debian/examples/hibernate
++++ bridge-utils-1.5/debian/examples/hibernate
+@@ -0,0 +1,40 @@
++# This is to be used with the hibernate package, it should be copied to
++# /etc/hibernate/scriptlets.d/bridge
++# To enable it add RecoverBridge to the network section of
++# /etc/hibernate/common.conf
++
++AddConfigHandler BridgeOptions
++
++BridgeSuspend() {
++    for i in `/sbin/brctl show|sed -n "s/^[^ ]*\t\([^\t]*\)/\1/p"`
++    do
++      /sbin/ifconfig $i down
++      vecho 2 BridgeSuspend: $i
++    done
++    return 0
++}
++
++BridgeResume() {
++    for i in `/sbin/brctl show|sed -n "s/^[^ ]*\t\([^\t]*\)/\1/p"`
++    do
++      /sbin/ifconfig $i up
++      vecho 2 BridgeResume: $i
++    done
++    return 0
++}
++
++BridgeOptions() {
++    case $1 in
++        recoverbridge)
++            ;;
++        *)
++            return 1
++    esac
++
++    if [ -z "$BRIDGE_HOOKED" ] ; then
++        AddSuspendHook 65 BridgeSuspend
++        AddResumeHook 65 BridgeResume
++        BRIDGE_HOOKED=1
++    fi
++    return 0
++}
+--- bridge-utils-1.5.orig/debian/examples/pm-utils
++++ bridge-utils-1.5/debian/examples/pm-utils
+@@ -0,0 +1,33 @@
++#!/bin/sh
++
++# This script should be used with pm-utils, to enjoy your bridge just copy this
++# as /etc/pm/sleep.d/bridge
++
++BridgeSuspend() {
++    for i in `/sbin/brctl show|sed -n "s/^[^ ]*\t\([^\t]*\)/\1/p"`
++    do
++      /sbin/ifconfig $i down
++      vecho 2 BridgeSuspend: $i
++    done
++    return 0
++}
++
++BridgeResume() {
++    for i in `/sbin/brctl show|sed -n "s/^[^ ]*\t\([^\t]*\)/\1/p"`
++    do
++      /sbin/ifconfig $i up
++      vecho 2 BridgeResume: $i
++    done
++    return 0
++}
++
++case "$1" in
++	hibernate|suspend)
++		BridgeSuspend
++		;;
++	thaw|resume)
++		BridgeResume
++		;;
++	*) exit 1
++		;;
++esac
+--- bridge-utils-1.5.orig/debian/include/linux/if_bridge.h
++++ bridge-utils-1.5/debian/include/linux/if_bridge.h
+@@ -0,0 +1,114 @@
++/*
++ *	Linux ethernet bridge
++ *
++ *	Authors:
++ *	Lennert Buytenhek		<buytenh@gnu.org>
++ *
++ *	$Id: if_bridge.h,v 1.1 2000/02/18 16:47:01 davem Exp $
++ *
++ *	This program is free software; you can redistribute it and/or
++ *	modify it under the terms of the GNU General Public License
++ *	as published by the Free Software Foundation; either version
++ *	2 of the License, or (at your option) any later version.
++ */
++
++#ifndef _LINUX_IF_BRIDGE_H
++#define _LINUX_IF_BRIDGE_H
++
++#include <linux/types.h>
++
++#define SYSFS_BRIDGE_ATTR	"bridge"
++#define SYSFS_BRIDGE_FDB	"brforward"
++#define SYSFS_BRIDGE_PORT_SUBDIR "brif"
++#define SYSFS_BRIDGE_PORT_ATTR	"brport"
++#define SYSFS_BRIDGE_PORT_LINK	"bridge"
++
++#define BRCTL_VERSION 1
++
++#define BRCTL_GET_VERSION 0
++#define BRCTL_GET_BRIDGES 1
++#define BRCTL_ADD_BRIDGE 2
++#define BRCTL_DEL_BRIDGE 3
++#define BRCTL_ADD_IF 4
++#define BRCTL_DEL_IF 5
++#define BRCTL_GET_BRIDGE_INFO 6
++#define BRCTL_GET_PORT_LIST 7
++#define BRCTL_SET_BRIDGE_FORWARD_DELAY 8
++#define BRCTL_SET_BRIDGE_HELLO_TIME 9
++#define BRCTL_SET_BRIDGE_MAX_AGE 10
++#define BRCTL_SET_AGEING_TIME 11
++#define BRCTL_SET_GC_INTERVAL 12
++#define BRCTL_GET_PORT_INFO 13
++#define BRCTL_SET_BRIDGE_STP_STATE 14
++#define BRCTL_SET_BRIDGE_PRIORITY 15
++#define BRCTL_SET_PORT_PRIORITY 16
++#define BRCTL_SET_PATH_COST 17
++#define BRCTL_GET_FDB_ENTRIES 18
++
++#define BR_STATE_DISABLED 0
++#define BR_STATE_LISTENING 1
++#define BR_STATE_LEARNING 2
++#define BR_STATE_FORWARDING 3
++#define BR_STATE_BLOCKING 4
++
++struct __bridge_info
++{
++	__u64 designated_root;
++	__u64 bridge_id;
++	__u32 root_path_cost;
++	__u32 max_age;
++	__u32 hello_time;
++	__u32 forward_delay;
++	__u32 bridge_max_age;
++	__u32 bridge_hello_time;
++	__u32 bridge_forward_delay;
++	__u8 topology_change;
++	__u8 topology_change_detected;
++	__u8 root_port;
++	__u8 stp_enabled;
++	__u32 ageing_time;
++	__u32 gc_interval;
++	__u32 hello_timer_value;
++	__u32 tcn_timer_value;
++	__u32 topology_change_timer_value;
++	__u32 gc_timer_value;
++};
++
++struct __port_info
++{
++	__u64 designated_root;
++	__u64 designated_bridge;
++	__u16 port_id;
++	__u16 designated_port;
++	__u32 path_cost;
++	__u32 designated_cost;
++	__u8 state;
++	__u8 top_change_ack;
++	__u8 config_pending;
++	__u8 unused0;
++	__u32 message_age_timer_value;
++	__u32 forward_delay_timer_value;
++	__u32 hold_timer_value;
++};
++
++struct __fdb_entry
++{
++	__u8 mac_addr[6];
++	__u8 port_no;
++	__u8 is_local;
++	__u32 ageing_timer_value;
++	__u32 unused;
++};
++
++#ifdef __KERNEL__
++
++#include <linux/netdevice.h>
++
++extern void brioctl_set(int (*ioctl_hook)(unsigned int, void __user *));
++extern struct sk_buff *(*br_handle_frame_hook)(struct net_bridge_port *p,
++					       struct sk_buff *skb);
++extern int (*br_should_route_hook)(struct sk_buff **pskb);
++
++#endif
++
++#endif
+--- bridge-utils-1.5.orig/debian/include/linux/sockios.h
++++ bridge-utils-1.5/debian/include/linux/sockios.h
+@@ -0,0 +1,143 @@
++/*
++ * INET		An implementation of the TCP/IP protocol suite for the LINUX
++ *		operating system.  INET is implemented using the  BSD Socket
++ *		interface as the means of communication with the user level.
++ *
++ *		Definitions of the socket-level I/O control calls.
++ *
++ * Version:	@(#)sockios.h	1.0.2	03/09/93
++ *
++ * Authors:	Ross Biro
++ *		Fred N. van Kempen, <waltje@uWalt.NL.Mugnet.ORG>
++ *
++ *		This program is free software; you can redistribute it and/or
++ *		modify it under the terms of the GNU General Public License
++ *		as published by the Free Software Foundation; either version
++ *		2 of the License, or (at your option) any later version.
++ */
++#ifndef _LINUX_SOCKIOS_H
++#define _LINUX_SOCKIOS_H
++
++#include <asm/sockios.h>
++
++/* Linux-specific socket ioctls */
++#define SIOCINQ		FIONREAD
++#define SIOCOUTQ	TIOCOUTQ
++
++/* Routing table calls. */
++#define SIOCADDRT	0x890B		/* add routing table entry	*/
++#define SIOCDELRT	0x890C		/* delete routing table entry	*/
++#define SIOCRTMSG	0x890D		/* call to routing system	*/
++
++/* Socket configuration controls. */
++#define SIOCGIFNAME	0x8910		/* get iface name		*/
++#define SIOCSIFLINK	0x8911		/* set iface channel		*/
++#define SIOCGIFCONF	0x8912		/* get iface list		*/
++#define SIOCGIFFLAGS	0x8913		/* get flags			*/
++#define SIOCSIFFLAGS	0x8914		/* set flags			*/
++#define SIOCGIFADDR	0x8915		/* get PA address		*/
++#define SIOCSIFADDR	0x8916		/* set PA address		*/
++#define SIOCGIFDSTADDR	0x8917		/* get remote PA address	*/
++#define SIOCSIFDSTADDR	0x8918		/* set remote PA address	*/
++#define SIOCGIFBRDADDR	0x8919		/* get broadcast PA address	*/
++#define SIOCSIFBRDADDR	0x891a		/* set broadcast PA address	*/
++#define SIOCGIFNETMASK	0x891b		/* get network PA mask		*/
++#define SIOCSIFNETMASK	0x891c		/* set network PA mask		*/
++#define SIOCGIFMETRIC	0x891d		/* get metric			*/
++#define SIOCSIFMETRIC	0x891e		/* set metric			*/
++#define SIOCGIFMEM	0x891f		/* get memory address (BSD)	*/
++#define SIOCSIFMEM	0x8920		/* set memory address (BSD)	*/
++#define SIOCGIFMTU	0x8921		/* get MTU size			*/
++#define SIOCSIFMTU	0x8922		/* set MTU size			*/
++#define SIOCSIFNAME	0x8923		/* set interface name */
++#define	SIOCSIFHWADDR	0x8924		/* set hardware address 	*/
++#define SIOCGIFENCAP	0x8925		/* get/set encapsulations       */
++#define SIOCSIFENCAP	0x8926		
++#define SIOCGIFHWADDR	0x8927		/* Get hardware address		*/
++#define SIOCGIFSLAVE	0x8929		/* Driver slaving support	*/
++#define SIOCSIFSLAVE	0x8930
++#define SIOCADDMULTI	0x8931		/* Multicast address lists	*/
++#define SIOCDELMULTI	0x8932
++#define SIOCGIFINDEX	0x8933		/* name -> if_index mapping	*/
++#define SIOGIFINDEX	SIOCGIFINDEX	/* misprint compatibility :-)	*/
++#define SIOCSIFPFLAGS	0x8934		/* set/get extended flags set	*/
++#define SIOCGIFPFLAGS	0x8935
++#define SIOCDIFADDR	0x8936		/* delete PA address		*/
++#define	SIOCSIFHWBROADCAST	0x8937	/* set hardware broadcast addr	*/
++#define SIOCGIFCOUNT	0x8938		/* get number of devices */
++
++#define SIOCGIFBR	0x8940		/* Bridging support		*/
++#define SIOCSIFBR	0x8941		/* Set bridging options 	*/
++
++#define SIOCGIFTXQLEN	0x8942		/* Get the tx queue length	*/
++#define SIOCSIFTXQLEN	0x8943		/* Set the tx queue length 	*/
++
++/* SIOCGIFDIVERT was:	0x8944		Frame diversion support */
++/* SIOCSIFDIVERT was:	0x8945		Set frame diversion options */
++
++#define SIOCETHTOOL	0x8946		/* Ethtool interface		*/
++
++#define SIOCGMIIPHY	0x8947		/* Get address of MII PHY in use. */
++#define SIOCGMIIREG	0x8948		/* Read MII PHY register.	*/
++#define SIOCSMIIREG	0x8949		/* Write MII PHY register.	*/
++
++#define SIOCWANDEV	0x894A		/* get/set netdev parameters	*/
++
++/* ARP cache control calls. */
++		    /*  0x8950 - 0x8952  * obsolete calls, don't re-use */
++#define SIOCDARP	0x8953		/* delete ARP table entry	*/
++#define SIOCGARP	0x8954		/* get ARP table entry		*/
++#define SIOCSARP	0x8955		/* set ARP table entry		*/
++
++/* RARP cache control calls. */
++#define SIOCDRARP	0x8960		/* delete RARP table entry	*/
++#define SIOCGRARP	0x8961		/* get RARP table entry		*/
++#define SIOCSRARP	0x8962		/* set RARP table entry		*/
++
++/* Driver configuration calls */
++
++#define SIOCGIFMAP	0x8970		/* Get device parameters	*/
++#define SIOCSIFMAP	0x8971		/* Set device parameters	*/
++
++/* DLCI configuration calls */
++
++#define SIOCADDDLCI	0x8980		/* Create new DLCI device	*/
++#define SIOCDELDLCI	0x8981		/* Delete DLCI device		*/
++
++#define SIOCGIFVLAN	0x8982		/* 802.1Q VLAN support		*/
++#define SIOCSIFVLAN	0x8983		/* Set 802.1Q VLAN options 	*/
++
++/* bonding calls */
++
++#define SIOCBONDENSLAVE	0x8990		/* enslave a device to the bond */
++#define SIOCBONDRELEASE 0x8991		/* release a slave from the bond*/
++#define SIOCBONDSETHWADDR      0x8992	/* set the hw addr of the bond  */
++#define SIOCBONDSLAVEINFOQUERY 0x8993   /* rtn info about slave state   */
++#define SIOCBONDINFOQUERY      0x8994	/* rtn info about bond state    */
++#define SIOCBONDCHANGEACTIVE   0x8995   /* update to a new active slave */
++			
++/* bridge calls */
++#define SIOCBRADDBR     0x89a0		/* create new bridge device     */
++#define SIOCBRDELBR     0x89a1		/* remove bridge device         */
++#define SIOCBRADDIF	0x89a2		/* add interface to bridge      */
++#define SIOCBRDELIF	0x89a3		/* remove interface from bridge */
++
++/* Device private ioctl calls */
++
++/*
++ *	These 16 ioctls are available to devices via the do_ioctl() device
++ *	vector. Each device should include this file and redefine these names
++ *	as their own. Because these are device dependent it is a good idea
++ *	_NOT_ to issue them to random objects and hope.
++ *
++ *	THESE IOCTLS ARE _DEPRECATED_ AND WILL DISAPPEAR IN 2.5.X -DaveM
++ */
++ 
++#define SIOCDEVPRIVATE	0x89F0	/* to 89FF */
++
++/*
++ *	These 16 ioctl calls are protocol private
++ */
++ 
++#define SIOCPROTOPRIVATE 0x89E0 /* to 89EF */
++#endif	/* _LINUX_SOCKIOS_H */
+--- bridge-utils-1.5.orig/libbridge/Makefile.in
++++ bridge-utils-1.5/libbridge/Makefile.in
+@@ -5,8 +5,7 @@
+ RANLIB=@RANLIB@
+ 
+ CC=@CC@
+-CFLAGS = -Wall -g $(KERNEL_HEADERS)
+-
++CFLAGS = -Wall -g $(KERNEL_HEADERS) @CFLAGS@
+ prefix=@prefix@
+ exec_prefix=@exec_prefix@
+ includedir=@includedir@
+@@ -34,8 +33,8 @@
+ 	$(RANLIB) $@
+ 
+ %.o: %.c libbridge.h libbridge_private.h
+-	$(CC) $(CFLAGS) $(INCLUDE) -c $<
++	$(CC) $(CFLAGS) $(CPPFLAGS) $(INCLUDE) -c $<
+ 
+ libbridge_compat.o:	libbridge_compat.c if_index.c
+-	$(CC) $(CFLAGS) -c libbridge_compat.c
++	$(CC) $(CFLAGS) $(CPPFLAGS) -c libbridge_compat.c
+ 
+--- bridge-utils-1.5.orig/libbridge/libbridge_devif.c
++++ bridge-utils-1.5/libbridge/libbridge_devif.c
+@@ -288,12 +288,16 @@
+ 	char path[SYSFS_PATH_MAX];
+ 	FILE *f;
+ 
+-	snprintf(path, SYSFS_PATH_MAX, SYSFS_CLASS_NET "%s/%s", bridge, name);
++/* Debian bug #496491 */
++	snprintf(path, SYSFS_PATH_MAX, SYSFS_CLASS_NET "%s/bridge/%s", bridge, name);
+ 
+ 	f = fopen(path, "w");
+ 	if (f) {
+ 		ret = fprintf(f, "%ld\n", value);
+ 		fclose(f);
++/* Debian bug #574363 */
++		if (errno)
++			ret=-1;
+ 	} else {
+ 		/* fallback to old ioctl */
+ 		struct ifreq ifr;
+@@ -355,6 +359,9 @@
+ 	if (f) {
+ 		ret = fprintf(f, "%ld\n", value);
+ 		fclose(f);
++/* Debian bug #574363 */
++		if (errno)
++			ret=-1;
+ 	} else {
+ 		int index = get_portno(bridge, ifname);
+ 
