@@ -1,0 +1,8 @@
+require ${PN}.inc
+
+DEPENDS_${PN}-zdump = "libc libtz"
+RDEPENDS_${PN}-zdump = "libc libtz"
+DEPENDS_${PN}-zic = "libc libtz"
+RDEPENDS_${PN}-zic = "libc libtz"
+DEPENDS_${PN}-date = "libc libtz"
+RDEPENDS_${PN}-date = "libc libtz"

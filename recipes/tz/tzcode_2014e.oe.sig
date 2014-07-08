@@ -1,0 +1,2 @@
+cf587f5b2756e488cb7f374fa7db087f7c132c2e  tzcode2014e.tar.gz
+724b0e19ba26316d7e1f6fee1ec5934fa31454ab  tzdata2014e.tar.gz

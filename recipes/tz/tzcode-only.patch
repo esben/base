@@ -1,0 +1,22 @@
+--- tzcode-2014e/Makefile~orig	2014-07-08 12:27:55.669574470 +0200
++++ tzcode-2014e/Makefile	2014-07-08 12:28:31.557574203 +0200
+@@ -340,15 +340,12 @@
+ 
+ ALL:		all date
+ 
+-install:	all $(DATA) $(REDO) $(MANS)
+-		mkdir -p $(DESTDIR)$(ETCDIR) $(DESTDIR)$(TZDIR) \
+-			$(DESTDIR)$(LIBDIR) \
++install:	all $(MANS)
++		mkdir -p $(DESTDIR)$(ETCDIR) \
++			$(DESTDIR)$(BINDIR) $(DESTDIR)$(LIBDIR) \
+ 			$(DESTDIR)$(MANDIR)/man3 $(DESTDIR)$(MANDIR)/man5 \
+ 			$(DESTDIR)$(MANDIR)/man8
+-		$(ZIC) -y $(YEARISTYPE) \
+-			-d $(DESTDIR)$(TZDIR) -l $(LOCALTIME) -p $(POSIXRULES)
+-		cp -f iso3166.tab zone.tab $(DESTDIR)$(TZDIR)/.
+-		cp tzselect zic zdump $(DESTDIR)$(ETCDIR)/.
++		cp tzselect zic zdump $(DESTDIR)$(BINDIR)/.
+ 		cp libtz.a $(DESTDIR)$(LIBDIR)/.
+ 		$(RANLIB) $(DESTDIR)$(LIBDIR)/libtz.a
+ 		cp -f newctime.3 newtzset.3 $(DESTDIR)$(MANDIR)/man3/.
