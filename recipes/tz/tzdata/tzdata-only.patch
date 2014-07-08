@@ -1,0 +1,48 @@
+Source: Written by Esben Haabendal <esben@haabendal.dk>
+Upstream: No
+Reason: Hack to enable build of tz data files only
+
+--- tzdata-2014e/Makefile~orig	2014-07-08 12:52:10.645563612 +0200
++++ tzdata-2014e/Makefile	2014-07-08 12:52:37.945563410 +0200
+@@ -336,24 +336,15 @@
+ 
+ SHELL=		/bin/sh
+ 
+-all:		tzselect zic zdump libtz.a $(TABDATA)
++all:		$(DATA) $(REDO)
+ 
+ ALL:		all date
+ 
+-install:	all $(DATA) $(REDO) $(MANS)
+-		mkdir -p $(DESTDIR)$(ETCDIR) $(DESTDIR)$(TZDIR) \
+-			$(DESTDIR)$(LIBDIR) \
+-			$(DESTDIR)$(MANDIR)/man3 $(DESTDIR)$(MANDIR)/man5 \
+-			$(DESTDIR)$(MANDIR)/man8
++install:	all
++		mkdir -p $(DESTDIR)$(TZDIR)
+ 		$(ZIC) -y $(YEARISTYPE) \
+ 			-d $(DESTDIR)$(TZDIR) -l $(LOCALTIME) -p $(POSIXRULES)
+ 		cp -f iso3166.tab zone.tab $(DESTDIR)$(TZDIR)/.
+-		cp tzselect zic zdump $(DESTDIR)$(ETCDIR)/.
+-		cp libtz.a $(DESTDIR)$(LIBDIR)/.
+-		$(RANLIB) $(DESTDIR)$(LIBDIR)/libtz.a
+-		cp -f newctime.3 newtzset.3 $(DESTDIR)$(MANDIR)/man3/.
+-		cp -f tzfile.5 $(DESTDIR)$(MANDIR)/man5/.
+-		cp -f tzselect.8 zdump.8 zic.8 $(DESTDIR)$(MANDIR)/man8/.
+ 
+ INSTALL:	ALL install date.1
+ 		mkdir -p $(DESTDIR)$(BINDIR) $(DESTDIR)$(MANDIR)/man1
+@@ -378,11 +369,11 @@
+ leapseconds:	$(LEAP_DEPS)
+ 		$(AWK) -f leapseconds.awk leap-seconds.list >$@
+ 
+-posix_only:	zic $(TDATA)
++posix_only:	$(TDATA)
+ 		$(ZIC) -y $(YEARISTYPE) -d $(DESTDIR)$(TZDIR) \
+ 			-L /dev/null $(TDATA)
+ 
+-right_only:	zic leapseconds $(TDATA)
++right_only:	leapseconds $(TDATA)
+ 		$(ZIC) -y $(YEARISTYPE) -d $(DESTDIR)$(TZDIR) \
+ 			-L leapseconds $(TDATA)
+ 
