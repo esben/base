@@ -1,0 +1,3 @@
+#!/bin/sh
+export BISON_PKGDATADIR=${datadir}/bison
+exec -a ${exec_prefix}${currentfile} ${exec_prefix}${realfile} $@

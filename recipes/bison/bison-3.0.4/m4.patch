@@ -1,0 +1,27 @@
+diff -urN a/data/c-skel.m4 b/data/c-skel.m4
+--- a/data/c-skel.m4	2015-01-16 15:47:42.000000000 +0100
++++ b/data/c-skel.m4	2015-05-19 11:17:37.369846890 +0200
+@@ -23,4 +23,4 @@
+ m4_define_default([b4_used_skeleton], [b4_pkgdatadir/[yacc.c]])
+ m4_define_default([b4_skeleton], ["b4_basename(b4_used_skeleton)"])
+ 
+-m4_include(b4_used_skeleton)
++m4_include(b4_pkgdatadir/[yacc.c])
+diff -urN a/data/c++-skel.m4 b/data/c++-skel.m4
+--- a/data/c++-skel.m4	2015-01-16 15:47:42.000000000 +0100
++++ b/data/c++-skel.m4	2015-05-19 11:17:48.281995788 +0200
+@@ -23,4 +23,4 @@
+ m4_define_default([b4_used_skeleton], [b4_pkgdatadir/[lalr1.cc]])
+ m4_define_default([b4_skeleton], ["b4_basename(b4_used_skeleton)"])
+ 
+-m4_include(b4_used_skeleton)
++m4_include(b4_pkgdatadir/[lalr1.cc])
+diff -urN a/data/java-skel.m4 b/data/java-skel.m4
+--- a/data/java-skel.m4	2015-01-16 15:47:42.000000000 +0100
++++ b/data/java-skel.m4	2015-05-19 11:17:19.145598194 +0200
+@@ -23,4 +23,4 @@
+ m4_define_default([b4_used_skeleton], [b4_pkgdatadir/[lalr1.java]])
+ m4_define_default([b4_skeleton], ["b4_basename(b4_used_skeleton)"])
+ 
+-m4_include(b4_used_skeleton)
++m4_include(b4_pkgdatadir/[lalr1.java])
