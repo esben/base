@@ -41,6 +41,7 @@ SRC_URI += "\
 	file://busybox-ifplugd.conf \
 "
 
+SRC_URI:>USE_busybox_udhcpc = " file://udhcp-simple-script-route-del-dev-null.patch"
 PACKAGES:<USE_busybox_udhcpc = "${PN}-udhcpc-scripts "
 
 RECIPE_FLAGS += "busybox_init_shutdown_umount"
