@@ -1,0 +1,45 @@
+From bcea66251e8014c12db81ff54f419fe82b6f8527 Mon Sep 17 00:00:00 2001
+From: Ryan Barnett <ryan.barnett@rockwellcollins.com>
+Date: Thu, 19 Nov 2015 10:47:00 -0600
+Subject: [PATCH] makefile.shared: fix race condition when symlinking shared
+ libs
+
+The build-shared target depends on do_crypto and link-shared, which
+will be executed in parallel. do_crypto calls
+link_a.linux_shared -> link_a.gnu which does SYMLINK_SO; in parallel,
+link-shared calls symlink.linux_shared which also does SYMLINK_SO.
+Before the symlink is created, it is rm'ed, but there is a tiny chance
+that the second one is created after the rm has been called.
+
+Fix this race condition by just using ln -sf since it will be the same
+symlink regards and not cause the build to error out.
+
+Signed-off-by: Ryan Barnett <ryan.barnett@rockwellcollins.com>
+---
+ Makefile.shared | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/Makefile.shared b/Makefile.shared
+index 8d57163..ce66574 100644
+--- a/Makefile.shared
++++ b/Makefile.shared
+@@ -118,14 +118,14 @@ SYMLINK_SO=	\
+ 		if [ -n "$$SHLIB_COMPAT" ]; then \
+ 			for x in $$SHLIB_COMPAT; do \
+ 				( $(SET_X); rm -f $$SHLIB$$x$$SHLIB_SUFFIX; \
+-				  ln -s $$prev $$SHLIB$$x$$SHLIB_SUFFIX ); \
++				  ln -sf $$prev $$SHLIB$$x$$SHLIB_SUFFIX ); \
+ 				prev=$$SHLIB$$x$$SHLIB_SUFFIX; \
+ 			done; \
+ 		fi; \
+ 		if [ -n "$$SHLIB_SOVER" ]; then \
+ 			[ -e "$$SHLIB$$SHLIB_SUFFIX" ] || \
+ 			( $(SET_X); rm -f $$SHLIB$$SHLIB_SUFFIX; \
+-			  ln -s $$prev $$SHLIB$$SHLIB_SUFFIX ); \
++			  ln -sf $$prev $$SHLIB$$SHLIB_SUFFIX ); \
+ 		fi; \
+ 	fi
+ 
+-- 
+1.9.1
+
