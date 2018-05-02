@@ -1,0 +1,2 @@
+require ${PN}.inc
+SRC_URI_TAR_COMPRESSION = ".xz"
