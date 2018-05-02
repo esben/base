@@ -5,7 +5,8 @@ DESCRIPTION = "stress-ng will stress test a computer system in various selectabl
 LICENSE = "GPL-2.0+"
 HOMEPAGE = "http://kernel.ubuntu.com/~cking/stress-ng/"
 
-SRC_URI = "http://kernel.ubuntu.com/~cking/tarballs/stress-ng/stress-ng-${PV}.tar.gz"
+SRC_URI = "http://kernel.ubuntu.com/~cking/tarballs/stress-ng/stress-ng-${PV}.tar${SRC_URI_TAR_COMPRESSION}"
+SRC_URI_TAR_COMPRESSION = ".gz"
 
 COMPATIBLE_HOST_ARCHS = ".*linux"
 
