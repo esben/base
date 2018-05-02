@@ -1,0 +1,48 @@
+diff --git a/ethtool-copy.h b/ethtool-copy.h
+index 8cc61e9..6c648b2 100644
+--- a/ethtool-copy.h
++++ b/ethtool-copy.h
+@@ -219,6 +219,9 @@ enum tunable_id {
+ 	ETHTOOL_ID_UNSPEC,
+ 	ETHTOOL_RX_COPYBREAK,
+ 	ETHTOOL_TX_COPYBREAK,
++	ETHTOOL_STORMPROT_COUNT,
++	ETHTOOL_STORMPROT_WINDOW,
++	ETHTOOL_STORMPROT_DELAY,
+ 	/*
+ 	 * Add your fresh new tubale attribute above and remember to update
+ 	 * tunable_strings[] in net/core/ethtool.c
+diff --git a/ethtool.c b/ethtool.c
+index 1a0685c..253ac1a 100644
+--- a/ethtool.c
++++ b/ethtool.c
+@@ -2080,6 +2080,9 @@ static int do_gtunables(struct cmd_context *ctx)
+ 			break;
+ 		case ETHTOOL_RX_COPYBREAK:
+ 		case ETHTOOL_TX_COPYBREAK:
++		case ETHTOOL_STORMPROT_COUNT:
++		case ETHTOOL_STORMPROT_WINDOW:
++		case ETHTOOL_STORMPROT_DELAY:
+ 			err = get_u32tunable(ctx, idx, &u32value);
+ 			err = print_u32tunable(err, tunables, idx, u32value);
+ 			if (err)
+@@ -2178,6 +2181,9 @@ static int do_stunables(struct cmd_context *ctx)
+ 			break;
+ 		case ETHTOOL_RX_COPYBREAK:
+ 		case ETHTOOL_TX_COPYBREAK:
++		case ETHTOOL_STORMPROT_COUNT:
++		case ETHTOOL_STORMPROT_WINDOW:
++		case ETHTOOL_STORMPROT_DELAY:
+ 			cmd_tunables[idx].wanted_val = &set_tunables[idx].u32_val;
+ 			cmd_tunables[idx].type = CMDL_U32;
+ 			break;
+@@ -2196,6 +2202,9 @@ static int do_stunables(struct cmd_context *ctx)
+ 				break;
+ 			case ETHTOOL_RX_COPYBREAK:
+ 			case ETHTOOL_TX_COPYBREAK:
++			case ETHTOOL_STORMPROT_COUNT:
++			case ETHTOOL_STORMPROT_WINDOW:
++			case ETHTOOL_STORMPROT_DELAY:
+ 				err = set_u32tunable(ctx, idx, set_tunables[idx].u32_val);
+ 				err = check_set_u32tunable(err, idx);
+ 				if (err)

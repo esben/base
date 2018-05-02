@@ -3,3 +3,6 @@ require ethtool.inc
 DEPENDS += "libm"
 DEPENDS_${PN} += "libm libc"
 RDEPENDS_${PN} += "libm libc"
+
+SRC_URI += "file://ethtool-tunables.patch"
+SRC_URI += "file://stormprot.patch"
