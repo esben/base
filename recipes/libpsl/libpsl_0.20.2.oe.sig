@@ -1,1 +1,1 @@
-5b6375c8cc17b7b7b7b9a4818c643dc16c09138b  public_suffix_list.dat
+b7f5c1414db2ead6f15737ab79fbc336a539ea16  git://github.com/rockdaboot/libpsl.git;tag=libpsl-0.20.2

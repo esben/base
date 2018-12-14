@@ -1,34 +1,24 @@
 DESCRIPTION = "TODO"
 HOMEPAGE = "TODO"
 
-COMPATIBLE_HOST_ARCHS = ".*linux"
-RECIPE_TYPES = "machine native sdk"
-PROVIDES_${PN} = "libpsl"
-AUTO_PACKAGE_UTILS = "libpsl"
-LIBRARY_NAME = "libpsl"
+RECIPE_TYPES = "machine"
 
-
-SRC_URI = "git://github.com/rockdaboot/${PN}.git;commit=${RELEASE_COMMIT}"
-SRC_URI += "file://public_suffix_list.dat"
-
+SRC_URI = "git://github.com/rockdaboot/${PN}.git;${SRC_REV}"
+SRC_REV ?= "tag=libpsl-${PV}"
 S = "${SRCDIR}/${PN}"
+
+SRC_URI += "git://github.com/publicsuffix/list.git;${SRC_REV_LIST}"
+SRC_REV_LIST = "5af964eadf5b6baaf5f612746837cb154e1f73b1"
 
 inherit autotools-autoreconf pkgconfig library
 
-inherit auto-package-libs
 inherit auto-package-utils
+AUTO_PACKAGE_UTILS = "psl"
 
 do_autoreconf[prefuncs] += "do_autoreconf_pre"
 do_autoreconf_pre() {
 	# avoid the gtk-doc package
 	echo "EXTRA_DIST =" >gtk-doc.make
 	echo "CLEANFILES =" >>gtk-doc.make
-	cp -p ../public_suffix_list.dat list
+	cp ${SRCDIR}/list/public_suffix_list.dat list/
 }
-
-do_install[postfuncs] = "do_install_rm"
-
-do_install_rm() {
-  rm -rf ${D}/usr/bin/psl
-}
-
