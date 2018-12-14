@@ -1,0 +1,3 @@
+require ${PN}.inc
+
+RELEASE_COMMIT="b7f5c1414db2ead6f15737ab79fbc336a539ea16"
